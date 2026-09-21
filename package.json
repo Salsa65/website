@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:mobile": "node scripts/build-mobile.mjs",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.57.4",
@@ -16,7 +19,8 @@
     "next": "16.3.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "zod": "4.1.11"
+    "zod": "4.1.11",
+    "@capacitor/core": "8.5.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
@@ -26,6 +30,8 @@
     "eslint": "9.36.0",
     "eslint-config-next": "16.3.3",
     "typescript": "5.9.2",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "@capacitor/android": "8.5.2",
+    "@capacitor/cli": "8.5.2"
   }
 }
