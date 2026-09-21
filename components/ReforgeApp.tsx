@@ -9,7 +9,7 @@ import type { AuthMode, GuestState, MyriaGoal, MyriaMessage, MyriaTask, Note, Pr
 import type { User } from '@supabase/supabase-js';
 
 const uid=()=>crypto.randomUUID();
-type AuthTab='signin'|'signup'|'admin';
+type AuthTab='signin'|'signup';
 type MyriaStatus='idle'|'observing'|'thinking'|'talking'|'error';
 const MYRIA_WELCOME="I'm Myria. I keep the project coherent while you make it interesting. Ask me to brainstorm, inspect a character, find gaps, or plan the next writing move.";
 
@@ -25,26 +25,22 @@ function AuthGate({onGuest,allowGuest=false}:{onGuest:()=>void;allowGuest?:boole
         const {data,error}=await supabase.auth.signUp({email,password,options:{data:{display_name:displayName||'Creator'}}}); if(error)throw error;
         if(!data.session)setMessage('Account created. Check your email if confirmation is enabled, then sign in.');
       } else {
-        const {data,error}=await supabase.auth.signInWithPassword({email,password}); if(error)throw error;
-        if(tab==='admin'){
-          const {data:profile,error:pErr}=await supabase.from('profiles').select('role').eq('user_id',data.user.id).single();
-          if(pErr||profile?.role!=='admin'){await supabase.auth.signOut();throw new Error('This account is not authorized for administrator access.');}
-        }
+        const {error}=await supabase.auth.signInWithPassword({email,password}); if(error)throw error;
       }
     }catch(err){setError(err instanceof Error?err.message:'Authentication failed.')}finally{setBusy(false)}
   }
   return <main className="gate"><Petals/><section className="gate-card">
     <div className="gate-mark">R</div><p className="eyebrow">PRIVATE STORY FORGE</p><h1>REFORGE</h1><p className="gate-copy">This workspace is private. Existing members can sign in, while new collaborators receive access automatically from a valid invite link.</p>
-    <div className="auth-tabs"><button onClick={()=>setTab('signin')} className={tab==='signin'?'active':''}>Sign In</button><button onClick={()=>setTab('signup')} className={tab==='signup'?'active':''}>Create Account</button><button onClick={()=>setTab('admin')} className={tab==='admin'?'active':''}>Administrator</button></div>
+    <div className="auth-tabs"><button onClick={()=>setTab('signin')} className={tab==='signin'?'active':''}>Sign In</button><button onClick={()=>setTab('signup')} className={tab==='signup'?'active':''}>Create Account</button></div>
     <form className="auth-form" onSubmit={submit}>
       {tab==='signup'&&<label>Display name<input value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" /></label>}
       <label>Email<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" /></label>
       <label>Password<input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={tab==='signup'?'new-password':'current-password'} /></label>
       {error&&<p className="form-error">{error}</p>}{message&&<p className="form-ok">{message}</p>}
-      <button className="primary wide" disabled={busy}>{busy?'Working…':tab==='signup'?'Create Account':tab==='admin'?'Administrator Login':'Sign In'}</button>
+      <button className="primary wide" disabled={busy}>{busy?'Working…':tab==='signup'?'Create Account':'Sign In'}</button>
     </form>
     {allowGuest&&<><div className="or"><span/>or<span/></div><button className="ghost wide" onClick={onGuest}>Continue as Guest</button></>}
-    <p className="gate-foot">Creating an account does not unlock the private workspace by itself. Access comes from an existing membership, administrator access, or a valid private invite link.</p>
+    <p className="gate-foot">After the first private workspace is initialized, access comes only from an existing project membership or a valid private invite link.</p>
   </section></main>
 }
 
@@ -92,13 +88,13 @@ export default function ReforgeApp(){
   },[notify]);
 
   const loadCloud=useCallback(async(currentUser:User)=>{if(!supabase)return;setCloudBusy(true);
-    const [{data:pRows,error:pErr},{data:prof}]=await Promise.all([supabase.from('projects').select('*').order('updated_at',{ascending:false}),supabase.from('profiles').select('*').eq('user_id',currentUser.id).maybeSingle()]);
+    const [{data:pRows,error:pErr},{data:prof},{data:bootstrap}]=await Promise.all([supabase.from('projects').select('*').order('updated_at',{ascending:false}),supabase.from('profiles').select('*').eq('user_id',currentUser.id).maybeSingle(),supabase.rpc('can_bootstrap_reforge')]);
     if(pErr){notify(pErr.message);setCloudBusy(false);return;}
     const ps=(pRows??[]) as Project[];
     const memberships=ps.length?await supabase.from('project_members').select('project_id,role').in('project_id',ps.map(p=>p.id)):({data:[]} as const);
     const membershipRows=(memberships.data??[]) as Array<{project_id:string;role:Role}>;
     const roleMap=new Map(membershipRows.map(m=>[m.project_id,m.role])); ps.forEach(p=>p.role=(roleMap.get(p.id)??(p.owner_id===currentUser.id?'owner':'viewer')) as Role);
-    const cloudProfile=prof as Profile|null; const allowed=ps.length>0||cloudProfile?.role==='admin'; setAccessDenied(!allowed);
+    const cloudProfile=prof as Profile|null; const allowed=ps.length>0||bootstrap===true; setAccessDenied(!allowed);
     setProjects(ps);setProfile(cloudProfile);setProfileName(cloudProfile?.display_name??'Creator');setProfileBio(cloudProfile?.bio??'');setProfileAvatar(cloudProfile?.avatar_url??'');
     if(!allowed){setActiveProjectId('');setSections([]);setNotes([]);setGoals([]);setMessages([{id:'welcome',role:'assistant',content:MYRIA_WELCOME,createdAt:Date.now()}]);setCloudBusy(false);return;}
     const requested=typeof window!=='undefined'?new URLSearchParams(window.location.search).get('project'):null;
