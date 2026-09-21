@@ -16,3 +16,51 @@
 @media(max-width:760px){.app{padding-bottom:120px}.topbar{height:58px;padding:0 10px}.companionStrip{grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.relationship{display:none}.companionCard{padding:8px}.companionAvatar{width:38px;height:38px;flex-basis:38px}.companionCard span{font-size:8px}.hero{padding:26px 18px}.hero h1{font-size:34px}.sectionGrid{grid-template-columns:1fr}.sectionCard{min-height:88px}.spaceHead{top:58px;grid-template-columns:auto 1fr}.addNote{grid-column:1/-1;justify-content:center}.spaceTitle input{font-size:19px}.noteGrid{grid-template-columns:1fr;padding:10px}.chatDock{left:8px;right:8px;width:auto;bottom:max(8px,env(safe-area-inset-bottom))}.chatPanel{height:min(560px,72vh)}.chatToggle{padding:9px 11px}.battle{width:175vw;top:39%;opacity:.42}.audioGate{top:67px}.heroActions button{flex:1;justify-content:center;min-width:150px}}
 @media(max-width:430px){.companionCard>div:not(.companionAvatar){min-width:0}.companionCard span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px}.hero h1{font-size:30px}.sectionCard{grid-template-columns:38px 1fr auto}.sectionIcon{width:38px;height:38px}.spaceHead{gap:9px}.backButton{font-size:0}.backButton svg{width:18px}.spaceTitle p{display:none}.note{min-height:250px}.chatPanel{height:70vh}}
 @media(prefers-reduced-motion:reduce){.rain,.lightning{display:none}.angelGroup,.demonGroup,.lightWing,.darkWing,.clash,.stormGlow,.companionAvatar{animation:none!important}}
+
+
+/* Full-body companion stage */
+.bodyStage{position:fixed;inset:64px 0 0;z-index:0;pointer-events:none;overflow:hidden;display:flex;justify-content:space-between;align-items:flex-end;padding:0 max(12px,calc((100vw - 1540px)/2));opacity:.72}
+.bodyAvatar{width:min(260px,21vw);height:min(500px,72vh);margin:0;position:relative;display:grid;align-items:end;filter:drop-shadow(0 24px 45px rgba(0,0,0,.6));transform-origin:50% 100%;animation:bodyIdle 5.4s ease-in-out infinite}
+.bodyAvatar[data-speaker="Arden"]{animation-delay:-2.7s}
+.bodyAvatar svg{width:100%;height:100%;overflow:visible}
+.bodyAvatar figcaption{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:grid;text-align:center;min-width:90px;padding:6px 9px;border:1px solid rgba(255,255,255,.1);border-radius:99px;background:rgba(5,6,9,.72);backdrop-filter:blur(9px)}
+.bodyAvatar figcaption strong{font-family:Georgia,serif;font-size:11px}.bodyAvatar figcaption span{font-size:7px;text-transform:uppercase;letter-spacing:.1em;color:#a8949c;margin-top:1px}
+.bodyWings{transform-box:fill-box;transform-origin:center 58%;animation:bodyWingBeat 3.2s ease-in-out infinite}
+.bodyAvatar[data-speaker="Vesper"] .bodyWings{animation-duration:2.75s}
+.bodyWingLeft,.bodyWingRight{transform-box:fill-box;transform-origin:center}.bodyWingLeft{animation:bodyWingLeft 3.2s ease-in-out infinite}.bodyWingRight{animation:bodyWingRight 3.2s ease-in-out infinite}
+.bodyAvatar[data-speaker="Vesper"] .bodyWingLeft,.bodyAvatar[data-speaker="Vesper"] .bodyWingRight{animation-duration:2.75s}
+.bodyCore{transform-box:fill-box;transform-origin:center;animation:bodyBreathe 4.2s ease-in-out infinite}
+.bodyHalo{transform-box:fill-box;transform-origin:center;animation:haloFloat 3.8s ease-in-out infinite}
+.bodyHorns{filter:drop-shadow(0 0 8px rgba(221,39,79,.45))}
+.bodyHair{filter:drop-shadow(0 4px 3px rgba(0,0,0,.25))}
+.bodyEyes{transform-box:fill-box;transform-origin:center;animation:blink 5.8s linear infinite}
+.bodyMouth{transform-box:fill-box;transform-origin:center}
+.bodyAvatar[data-talking="true"] .bodyMouth{animation:mouthTalk .28s ease-in-out infinite alternate}
+.bodyAvatar[data-talking="true"]{filter:drop-shadow(0 24px 45px rgba(0,0,0,.6)) brightness(1.1)}
+.bodyAura{transform-box:fill-box;transform-origin:center;animation:auraPulse 3.3s ease-in-out infinite}
+.bodyAvatar[data-speaker="Vesper"] .bodyAura{animation-duration:2.8s}
+@keyframes bodyIdle{0%,100%{transform:translateY(9px) rotate(-.5deg)}50%{transform:translateY(0) rotate(.5deg)}}
+@keyframes bodyBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.012)}}
+@keyframes bodyWingBeat{0%,100%{transform:scaleY(.97)}50%{transform:scaleY(1.035)}}
+@keyframes bodyWingLeft{0%,100%{transform:rotate(4deg)}50%{transform:rotate(-7deg)}}
+@keyframes bodyWingRight{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(7deg)}}
+@keyframes haloFloat{50%{transform:translateY(-5px) scale(1.04);opacity:.75}}
+@keyframes blink{0%,44%,47%,100%{transform:scaleY(1)}45%,46%{transform:scaleY(.08)}}
+@keyframes mouthTalk{from{transform:scaleY(.65)}to{transform:scaleY(1.75) translateY(1px)}}
+@keyframes auraPulse{50%{transform:scale(1.045);opacity:.55}}
+
+/* Cloud memory */
+.cloudPill{height:38px;display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:99px;padding:0 10px;color:#b7aab0;font-size:9px}
+.cloudPill[data-state="synced"]{border-color:rgba(111,201,152,.24);color:#b8dcc7}.cloudPill[data-state="syncing"]{border-color:rgba(226,177,91,.28);color:#d8bb87}.cloudPill[data-state="error"]{border-color:rgba(239,90,116,.35);color:#ef8fa1}
+.cloudCard{border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.025);padding:12px;margin:0 0 15px}
+.cloudCardHead{display:flex;gap:10px;align-items:flex-start}.cloudCardHead>span{width:34px;height:34px;border:1px solid rgba(255,255,255,.1);border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.035)}
+.cloudCardHead>div{display:grid;gap:3px}.cloudCardHead strong{font-size:11px}.cloudCardHead small{color:#8d7f85;font-size:8px;line-height:1.4}
+.signedInRow{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:9px;color:#a9989f}.signedInRow button,.cloudSubmit{border:1px solid var(--line);background:rgba(255,255,255,.045);border-radius:8px;padding:7px 9px;display:flex;align-items:center;gap:5px;font-size:8px}
+.cloudAuth{display:grid;gap:7px;margin-top:10px}.cloudAuth input{width:100%;margin:0!important}.authTabs{display:grid;grid-template-columns:1fr 1fr;gap:5px}.authTabs button{border:1px solid var(--line);background:transparent;border-radius:7px;padding:7px;font-size:8px;color:#8f7f86}.authTabs button[data-active="true"]{background:rgba(169,29,58,.2);border-color:rgba(221,73,103,.28);color:#e8dce0}
+.cloudSubmit{justify-content:center;background:linear-gradient(135deg,rgba(160,27,56,.7),rgba(77,15,31,.8));border-color:rgba(230,79,107,.28)}
+.authError{color:#ef8297!important}.authNotice{color:#9dccb2!important}
+
+@media(max-width:1100px){.bodyStage{opacity:.42}.bodyAvatar{width:205px;height:410px}}
+@media(max-width:760px){.bodyStage{inset:58px 0 auto;height:370px;padding:0;opacity:.28;align-items:flex-start}.bodyAvatar{width:180px;height:350px;margin-top:8px}.bodyAvatar:first-child{margin-left:-55px}.bodyAvatar:last-child{margin-right:-55px}.bodyAvatar figcaption{display:none}.cloudPill span{display:none}.cloudPill{width:38px;padding:0;justify-content:center}}
+@media(max-width:430px){.bodyStage{height:320px}.bodyAvatar{width:160px;height:310px}.bodyAvatar:first-child{margin-left:-64px}.bodyAvatar:last-child{margin-right:-64px}}
+@media(prefers-reduced-motion:reduce){.bodyAvatar,.bodyWings,.bodyWingLeft,.bodyWingRight,.bodyCore,.bodyHalo,.bodyEyes,.bodyMouth,.bodyAura{animation:none!important}}
