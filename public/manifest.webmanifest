@@ -1,0 +1,9 @@
+{
+  "name":"Reforge — Story Workshop",
+  "short_name":"Reforge",
+  "start_url":"/",
+  "display":"standalone",
+  "background_color":"#08080a",
+  "theme_color":"#b91535",
+  "description":"A cinematic writing and story-development workspace with Myria."
+}
