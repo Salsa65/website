@@ -143,4 +143,31 @@ create index if not exists idx_collaboration_invites_project on public.collabora
 create index if not exists idx_collaboration_invites_created_by on public.collaboration_invites(created_by);
 create index if not exists idx_collaboration_invites_accepted_by on public.collaboration_invites(accepted_by);
 
+
+create or replace function private.is_reforge_member()
+returns boolean
+language sql
+stable
+security definer
+set search_path=public,auth,pg_temp
+as $
+  select (select auth.uid()) is not null and (
+    private.is_admin()
+    or exists (
+      select 1 from public.project_members pm
+      where pm.user_id=(select auth.uid())
+    )
+  )
+$;
+revoke all on function private.is_reforge_member() from public,anon;
+grant execute on function private.is_reforge_member() to authenticated;
+
+drop policy if exists projects_insert_owner on public.projects;
+create policy projects_insert_owner
+on public.projects for insert to authenticated
+with check (
+  owner_id=(select auth.uid())
+  and private.is_reforge_member()
+);
+
 commit;
