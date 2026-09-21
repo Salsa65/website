@@ -180,7 +180,7 @@ export default function ReforgeApp(){
       updateTaskState(goalId,task.id,{status:'working',attempts:attempt});
       if(mode==='account'&&supabase)await supabase.from('myria_tasks').update({status:'working',attempts:attempt}).eq('id',task.id);
       try{
-        const res=await fetch('/api/myria/task',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({task:taskText,context:projectContext(),attempt})});
+        if(!supabase)throw new Error('Private project authentication is required.');const {data:{session}}=await supabase.auth.getSession();const auth=session?.access_token;if(!auth||!activeProjectId)throw new Error('Private project authentication is required.');const res=await fetch('/api/myria/task',{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`},body:JSON.stringify({projectId:activeProjectId,task:taskText,context:projectContext(),attempt})});
         const data=await res.json();if(!res.ok)throw new Error(data.error||'Task execution failed.');latest=data;
         const evidence=data.verification.evidence.join(' · ');
         await logTaskActivity(goalId,task.id,data.verification.passed?'complete':'retrying',task.description,taskText,data.actualResult,evidence,data.reflection,attempt-1);
