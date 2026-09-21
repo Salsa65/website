@@ -19,7 +19,7 @@ export default function InviteJoin({token}:{token:string}){
     const {data,error}=await supabase.rpc('accept_collaboration_invite',{p_token:token});
     if(error)throw error;
     window.localStorage.removeItem('reforge-pending-invite');
-    router.replace(data?('/?project='+encodeURIComponent(String(data))):'/'); router.refresh();
+    const base=process.env.NEXT_PUBLIC_BASE_PATH||''; router.replace(data?(base+'/?project='+encodeURIComponent(String(data))):(base+'/')); router.refresh();
   }
 
   useEffect(()=>{
