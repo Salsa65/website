@@ -19,7 +19,7 @@ const SUPABASE_PUBLIC_KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||'';
 function Petals(){return <div className="petals" aria-hidden>{Array.from({length:26},(_,i)=><i key={i} style={{left:`${(i*17+7)%100}%`,animationDelay:`-${(i*2.7)%18}s`,animationDuration:`${10+(i%8)*1.8}s`}} />)}</div>}
 
 function AngelSky(){return <div className="angel-sky" aria-hidden>
-  {Array.from({length:10},(_,i)=><span key={i} className={`sky-angel ${i%2===0?'}light':'fallen} angel-${i+1}`}>
+  {Array.from({length:10},(_,i)=><span key={i} className={`sky-angel ${i%2===0?'light':'fallen'} angel-${i+1}`}>
     <span className="sky-halo"/><span className="sky-wing wing-left"/><span className="sky-body"/><span className="sky-wing wing-right"/>
   </span>)}
   <span className="sky-rift"/><span className="sky-mist mist-a"/><span className="sky-mist mist-b"/>
