@@ -52,9 +52,9 @@ Myria never needs an API key in the browser. New user messages interrupt current
 
 - **Sign In** and **Create Account** use Supabase Auth.
 - **Continue as Guest** keeps core writing features available locally.
-- **Administrator Login** uses normal Supabase credentials and then verifies `profiles.role = 'admin'`. No administrator password is hard-coded.
-
-To designate an administrator, set the trusted user's `public.profiles.role` to `admin` from an authenticated administrative database workflow. Do not expose a client route that can self-promote roles.
+- There is no administrator login or hidden administrator bypass.
+- Private access is granted through existing project membership or a valid invite link.
+- Invite recipients can join without a manual approval step after authentication.
 
 ## Collaboration
 
