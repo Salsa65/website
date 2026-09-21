@@ -21,3 +21,41 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-2;bac
 .ascension-gate{grid-template-columns:minmax(320px,1.25fr) minmax(340px,520px);gap:clamp(20px,5vw,72px);padding:clamp(20px,5vw,70px);background:radial-gradient(circle at 22% 36%,rgba(171,30,57,.3),transparent 28%),linear-gradient(115deg,rgba(3,3,6,.98),rgba(17,10,16,.9) 54%,rgba(6,5,8,.98))}.gate-poster{position:relative;min-height:min(76vh,780px);border:1px solid rgba(255,232,226,.13);border-radius:30px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(ellipse at center,rgba(174,36,61,.24),transparent 42%),linear-gradient(155deg,#07070a 10%,#21121a 58%,#08070a);box-shadow:0 35px 110px rgba(0,0,0,.5)}.gate-poster:before,.gate-poster:after{content:"";position:absolute;width:45%;height:65%;top:12%;opacity:.22;filter:blur(2px);background:repeating-linear-gradient(105deg,transparent 0 14px,rgba(255,255,255,.65) 15px 17px,transparent 18px 29px);clip-path:polygon(100% 40%,70% 0,0 20%,65% 52%,5% 100%,78% 72%)}.gate-poster:before{left:2%;transform:rotate(-10deg)}.gate-poster:after{right:2%;transform:scaleX(-1) rotate(-10deg);filter:invert(1) blur(2px);opacity:.28}.gate-poster .ascension-mark{z-index:2;transform:scale(1.45)}.poster-copy{z-index:2;text-align:center;margin-top:45px}.poster-copy h1{font-family:Cinzel,serif;font-size:clamp(42px,6vw,84px);letter-spacing:.22em;margin:8px 0;text-shadow:0 8px 30px #000}.poster-copy>p:last-child{font-family:Cinzel,serif;letter-spacing:.3em;font-size:11px;color:#cbb9ba}.ascension-gate .gate-card{margin:0}.brand .ascension-mark{transition:transform .25s ease}.brand:hover .ascension-mark{transform:scale(1.07)}
 @media(max-width:900px){.ascension-gate{grid-template-columns:1fr}.gate-poster{min-height:280px}.gate-poster .ascension-mark{transform:scale(.9)}.poster-copy{margin-top:12px}.poster-copy h1{font-size:34px}.gate-poster:before,.gate-poster:after{height:90%;top:0}}
 @media(max-width:560px){.ascension-gate{padding:10px;gap:10px}.gate-poster{min-height:205px;border-radius:20px}.gate-poster .ascension-mark{transform:scale(.65)}.poster-copy{margin-top:-4px}.poster-copy h1{font-size:25px}.poster-copy .eyebrow{font-size:8px}.poster-copy>p:last-child{font-size:8px}.ascension-gate .gate-card{padding:22px 16px}.ascension-gate .gate-card>.ascension-mark{display:none}}
+
+
+/* Public Ascension atmosphere: layered angels, fallen angels, wing flaps, mist and rift light */
+.angel-sky{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:-1;perspective:1200px}
+.sky-angel{position:absolute;width:90px;height:120px;opacity:.18;filter:blur(.25px) drop-shadow(0 10px 18px rgba(0,0,0,.55));animation:angelDrift 18s ease-in-out infinite;transform-style:preserve-3d}
+.sky-body{position:absolute;left:50%;top:38px;width:12px;height:55px;transform:translateX(-50%);border-radius:55% 55% 35% 35%;background:linear-gradient(180deg,currentColor,transparent)}
+.sky-body:before{content:"";position:absolute;left:50%;top:-14px;width:16px;height:16px;transform:translateX(-50%);border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+.sky-halo{position:absolute;left:50%;top:12px;width:30px;height:8px;transform:translateX(-50%) rotateX(68deg);border:2px solid currentColor;border-radius:50%;box-shadow:0 0 10px currentColor}
+.sky-wing{position:absolute;top:33px;width:48px;height:58px;border-radius:80% 18% 76% 22%;background:repeating-linear-gradient(115deg,currentColor 0 5px,transparent 6px 10px);transform-origin:90% 28%;opacity:.9}
+.wing-left{right:47%;transform:rotate(18deg);animation:skyWingLeft 1.9s ease-in-out infinite}
+.wing-right{left:47%;transform:scaleX(-1) rotate(18deg);animation:skyWingRight 1.9s ease-in-out infinite}
+.sky-angel.fallen .sky-halo{border-color:#9d1731;box-shadow:0 0 12px #b61f3b;transform:translateX(-50%) rotateX(68deg) rotate(12deg)}
+.sky-angel.light{color:#fff5ec;text-shadow:0 0 18px rgba(255,245,236,.8)}
+.sky-angel.fallen{color:#6f1028;text-shadow:0 0 18px rgba(199,53,79,.9)}
+.angel-1{left:4%;top:12%;transform:scale(.8);animation-delay:-3s}.angel-2{left:17%;top:64%;transform:scale(.55);animation-delay:-11s}.angel-3{left:31%;top:20%;transform:scale(.42);animation-delay:-7s}.angel-4{left:43%;top:73%;transform:scale(.72);animation-delay:-15s}.angel-5{left:57%;top:8%;transform:scale(.52);animation-delay:-5s}.angel-6{left:67%;top:57%;transform:scale(.9);animation-delay:-13s}.angel-7{left:78%;top:18%;transform:scale(.62);animation-delay:-2s}.angel-8{left:89%;top:69%;transform:scale(.48);animation-delay:-17s}.angel-9{left:9%;top:82%;transform:scale(.38);animation-delay:-9s}.angel-10{left:84%;top:41%;transform:scale(.36);animation-delay:-6s}
+.sky-angel:nth-child(3n) .wing-left,.sky-angel:nth-child(3n) .wing-right{animation-duration:1.45s}.sky-angel:nth-child(4n) .wing-left,.sky-angel:nth-child(4n) .wing-right{animation-duration:2.35s}
+.sky-rift{position:absolute;left:50%;top:-18%;width:2px;height:135%;background:linear-gradient(180deg,transparent,#fff4ee 18%,#ca3652 48%,#5f0b20 76%,transparent);box-shadow:0 0 22px #fff1e7,0 0 70px rgba(199,53,79,.72);opacity:.2;animation:riftPulse 4.5s ease-in-out infinite}
+.sky-mist{position:absolute;width:55vw;height:35vh;border-radius:50%;filter:blur(70px);opacity:.1;animation:mistFloat 12s ease-in-out infinite}.mist-a{left:-10vw;top:18vh;background:#f7eee9}.mist-b{right:-8vw;bottom:8vh;background:#a21332;animation-delay:-6s}
+@keyframes skyWingLeft{0%,100%{transform:rotate(20deg) rotateY(0)}50%{transform:rotate(-23deg) rotateY(34deg) translateY(-5px)}}
+@keyframes skyWingRight{0%,100%{transform:scaleX(-1) rotate(20deg) rotateY(0)}50%{transform:scaleX(-1) rotate(-23deg) rotateY(34deg) translateY(-5px)}}
+@keyframes angelDrift{0%,100%{margin-top:0;margin-left:0;opacity:.12}35%{margin-top:-24px;margin-left:18px;opacity:.22}70%{margin-top:12px;margin-left:-14px;opacity:.16}}
+@keyframes riftPulse{50%{opacity:.36;transform:scaleX(2.4)}}
+@keyframes mistFloat{50%{transform:translate3d(6vw,-3vh,0) scale(1.14)}}
+
+/* Stronger flap motion for the Ascension logo while preserving its existing mark */
+.ascension-mark:not(.compact) .asc-light{animation:logoWingLight 1.7s ease-in-out infinite}
+.ascension-mark:not(.compact) .asc-dark{animation:logoWingDark 1.7s ease-in-out infinite;animation-delay:-.85s}
+.compact .asc-light{animation:compactWingLight 2.1s ease-in-out infinite}.compact .asc-dark{animation:compactWingDark 2.1s ease-in-out infinite;animation-delay:-1.05s}
+@keyframes logoWingLight{0%,100%{transform:rotate(-18deg) translateY(0) scaleY(1)}50%{transform:rotate(-36deg) translateY(-9px) scaleY(.82)}}
+@keyframes logoWingDark{0%,100%{transform:rotate(18deg) translateY(0) scaleY(1)}50%{transform:rotate(36deg) translateY(-9px) scaleY(.82)}}
+@keyframes compactWingLight{0%,100%{transform:rotate(-18deg)}50%{transform:rotate(-31deg) translateY(-2px)}}@keyframes compactWingDark{0%,100%{transform:rotate(18deg)}50%{transform:rotate(31deg) translateY(-2px)}}
+
+/* Myria face portrait slot. Drop the supplied portrait at public/myria-profile.png. */
+.myria-orb{position:relative;overflow:hidden}.myria-profile-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:2}.myria-fallback{position:relative;z-index:1}
+.myria-orb.talking .myria-profile-image{animation:myriaTalk 1.05s ease-in-out infinite}.myria-orb.thinking .myria-profile-image{animation:myriaThink 1.5s ease-in-out infinite}
+@keyframes myriaTalk{50%{transform:scale(1.07);filter:brightness(1.12)}}@keyframes myriaThink{50%{transform:scale(1.04) translateY(-1px);filter:saturate(1.12)}}
+@media(max-width:720px){.sky-angel{opacity:.12}.angel-3,.angel-5,.angel-8,.angel-9{display:none}.sky-rift{opacity:.12}}
+@media(prefers-reduced-motion:reduce){.angel-sky{display:none}}
