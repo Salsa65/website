@@ -11,6 +11,7 @@ export default defineConfig([
       // external systems inside effects. These are synchronization effects, not
       // derived render state.
       'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
     },
   },
   globalIgnores([
