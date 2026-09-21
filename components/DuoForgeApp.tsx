@@ -16,6 +16,11 @@ type ChatMessage = { id:string; speaker:'You'|Speaker; text:string; emotion?:str
 type InstallPrompt = Event & { prompt:()=>Promise<void>; userChoice:Promise<{outcome:'accepted'|'dismissed'}> };
 
 const STORE_KEY='reforge-duo-mobile-v1';
+const BASE_PATH=process.env.NEXT_PUBLIC_BASE_PATH||'';
+const SUPABASE_URL=process.env.NEXT_PUBLIC_SUPABASE_URL||'';
+const SUPABASE_KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||'';
+const edgeUrl=(name:string)=>SUPABASE_URL?SUPABASE_URL+'/functions/v1/'+name:'';
+const edgeHeaders=()=>({'content-type':'application/json','apikey':SUPABASE_KEY});
 const defaultSections:ForgeSection[]=[
   {id:'brainstorm',title:'Brainstorming',subtitle:'Raw ideas, sparks, possibilities.',icon:'✦',notes:[]},
   {id:'outline',title:'Outline',subtitle:'Acts, arcs, chapters, beats.',icon:'◇',notes:[]},
@@ -123,7 +128,7 @@ export default function DuoForgeApp(){
         if(typeof data.ambientOn==='boolean')setAmbientOn(data.ambientOn);
       }
     }catch{}
-    if('serviceWorker' in navigator)navigator.serviceWorker.register('/duo-sw.js').catch(()=>undefined);
+    if('serviceWorker' in navigator)navigator.serviceWorker.register(BASE_PATH+'/duo-sw.js').catch(()=>undefined);
     const onInstall=(event:Event)=>{event.preventDefault();setInstallPrompt(event as InstallPrompt)};
     window.addEventListener('beforeinstallprompt',onInstall);
     return()=>window.removeEventListener('beforeinstallprompt',onInstall);
@@ -138,7 +143,8 @@ export default function DuoForgeApp(){
     speechChain.current=speechChain.current.then(async()=>{
       try{
         setTalking(speaker); setVoiceError('');
-        const response=await fetch('/api/duo/voice',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:text.slice(0,1200),speaker})});
+        const endpoint=edgeUrl('reforge-duo-voice'); if(!endpoint||!SUPABASE_KEY)throw new Error('Cloud voice backend is not configured.');
+        const response=await fetch(endpoint,{method:'POST',headers:edgeHeaders(),body:JSON.stringify({text:text.slice(0,1200),speaker})});
         if(!response.ok){const err=await response.json().catch(()=>({error:'Voice request failed'}));throw new Error(err.error||'Voice request failed');}
         const blob=await response.blob(); const url=URL.createObjectURL(blob); const audio=new Audio(url);
         await new Promise<void>((resolve,reject)=>{audio.onended=()=>resolve();audio.onerror=()=>reject(new Error('Audio playback failed'));audio.play().catch(reject)});
@@ -177,7 +183,8 @@ export default function DuoForgeApp(){
     setMessages(prev=>[...prev,userMsg]); setInput(''); setBusy(true); setChatOpen(true);
     const lead=leadRef.current; leadRef.current=lead==='Vesper'?'Arden':'Vesper';
     try{
-      const history=messages.slice(-12).map(({speaker,text})=>({speaker,text}));\n      const response=await fetch('/api/duo/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message,notes:noteContext(),web:webEnabled,lead,history})});
+      const history=messages.slice(-12).map(({speaker,text})=>({speaker,text}));\n      const endpoint=edgeUrl('reforge-duo-chat'); if(!endpoint||!SUPABASE_KEY)throw new Error('Cloud AI backend is not configured.');
+      const response=await fetch(endpoint,{method:'POST',headers:edgeHeaders(),body:JSON.stringify({message,notes:noteContext(),web:webEnabled,lead,history})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||'The companions could not answer.');
       const turns=(data.turns||[]) as Array<{speaker:Speaker;text:string;emotion?:Mood}>;
