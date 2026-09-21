@@ -1,13 +1,11 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 type InvitePreview={project_title:string;invite_role:'editor'|'viewer';email_restricted:boolean;expires_at:string};
 
 export default function InviteJoin({token}:{token:string}){
-  const router=useRouter();
   const [preview,setPreview]=useState<InvitePreview|null>(null);
   const [checking,setChecking]=useState(true);
   const [tab,setTab]=useState<'signin'|'signup'>('signin');
@@ -19,7 +17,7 @@ export default function InviteJoin({token}:{token:string}){
     const {data,error}=await supabase.rpc('accept_collaboration_invite',{p_token:token});
     if(error)throw error;
     window.localStorage.removeItem('reforge-pending-invite');
-    router.replace(data?('/?project='+encodeURIComponent(String(data))):'/'); router.refresh();
+    const base=process.env.NEXT_PUBLIC_BASE_PATH||''; window.location.replace(data?(base+'/?project='+encodeURIComponent(String(data))):(base+'/'));
   }
 
   useEffect(()=>{
