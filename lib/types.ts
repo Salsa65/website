@@ -1,0 +1,10 @@
+export type Role = 'owner' | 'editor' | 'viewer';
+export type AuthMode = 'guest' | 'account';
+export type Section = { id: string; project_id: string; title: string; slug: string; position: number; is_system: boolean; created_by?: string | null };
+export type Note = { id: string; project_id: string; author_id?: string | null; section_id?: string | null; title: string; body: string; category: string; position: number; created_at?: string; updated_at?: string };
+export type Project = { id: string; owner_id?: string | null; title: string; description: string; status?: string; role?: Role };
+export type Profile = { user_id: string; display_name: string; avatar_url?: string | null; bio?: string; role?: string };
+export type MyriaMessage = { id: string; role: 'user' | 'assistant'; content: string; createdAt: number };
+export type MyriaTask = { id: string; description: string; status: string; riskLevel: 'low' | 'medium' | 'high'; attempts: number; maxAttempts: number; verification?: string; reflection?: string };
+export type MyriaGoal = { id: string; title: string; description: string; reason: string; priority: number; status: string; tasks: MyriaTask[] };
+export type GuestState = { projects: Project[]; sections: Section[]; notes: Note[]; activeProjectId: string; profile: { display_name: string; bio: string }; goals: MyriaGoal[] };

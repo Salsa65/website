@@ -1,7 +1,6 @@
-import {describe,it,expect} from 'vitest';
-import {deriveLocalPlan} from '../src/lib/myria';
-describe('Myria planning',()=>{
- it('targets a missing story area using evidence',()=>{const p=deriveLocalPlan({Brainstorming:2,Characters:0,Lore:1});expect(p.goal).toContain('Characters');expect(p.tasks.length).toBeGreaterThan(1);});
- it('switches to cohesion when core areas are populated',()=>{const p=deriveLocalPlan({Brainstorming:1,Characters:1,Lore:1});expect(p.goal).toBe('Review story cohesion');});
- it('keeps suggested work low risk',()=>{expect(deriveLocalPlan({Plot:0}).priority).toBe('low');});
+import { describe, expect, it } from 'vitest';
+import { safeMyriaResponse } from '@/lib/myria';
+describe('Myria structured response',()=>{
+  it('accepts a safe structured suggestion',()=>{const value=safeMyriaResponse({message:'I found a useful gap.',suggestion:{title:'Resolve timeline',description:'Align two scenes',reason:'Dates conflict',priority:70,tasks:[{description:'Compare scene dates',riskLevel:'low'}]}});expect(value.suggestion?.tasks[0].riskLevel).toBe('low')});
+  it('rejects unsupported risk levels',()=>expect(()=>safeMyriaResponse({message:'x',suggestion:{title:'x',description:'x',reason:'x',priority:10,tasks:[{description:'x',riskLevel:'critical'}]}})).toThrow());
 });
