@@ -241,12 +241,14 @@ export default function DuoForgeApp(){
 
   useEffect(()=>{
     if(!supabase||!user||!cloudReady)return;
+    const client=supabase;
+    const currentUser=user;
     if(cloudTimer.current)clearTimeout(cloudTimer.current);
     cloudTimer.current=setTimeout(()=>{
       void (async()=>{
         setCloudState('syncing');
         const payload={version:2,sections,messages:messages.slice(-80),theme,webEnabled,ambientOn};
-        const {error}=await supabase.from('duo_memory').upsert({user_id:user.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+        const {error}=await client.from('duo_memory').upsert({user_id:currentUser.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});
         setCloudState(error?'error':'synced');
       })();
     },1200);
