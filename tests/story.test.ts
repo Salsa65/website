@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { boundedAttempt, canEdit, inferSection } from '@/lib/story';
-import type { Section } from '@/lib/types';
+import { boundedAttempt, canEdit, inferSection } from '../lib/story';
+import type { Section } from '../lib/types';
 const sections=['Brainstorming','Outlines','Characters','Worldbuilding','Locations','Lore','Power Systems','Plot Development','Themes','Research','Rough Draft','Final Draft'].map((title,i)=>({id:String(i),project_id:'p',title,slug:'s'+i,position:i,is_system:true})) satisfies Section[];
 describe('story routing',()=>{
   it('routes from body content rather than title',()=>expect(inferSection('Her protagonist backstory hides a secret sister.',sections)).toBe('2'));
