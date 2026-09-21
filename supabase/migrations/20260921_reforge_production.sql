@@ -278,3 +278,28 @@ create policy conversations_insert_self on public.myria_conversations for insert
 
 grant select,insert,update,delete on public.projects,public.project_members,public.sections,public.notes,public.project_invites,public.myria_goals,public.myria_tasks,public.myria_activity,public.myria_memory,public.myria_conversations to authenticated;
 grant select,update on public.profiles to authenticated;
+
+
+-- Myria approval gate for medium/high-risk tasks.
+create table if not exists public.myria_approvals (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  task_id uuid not null unique references public.myria_tasks(id) on delete cascade,
+  requested_by uuid not null references auth.users(id) on delete cascade,
+  risk_level text not null default 'high' check (risk_level in ('medium','high')),
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  reason text not null default '',
+  decided_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  decided_at timestamptz
+);
+alter table public.myria_approvals enable row level security;
+drop policy if exists approvals_select_member on public.myria_approvals;
+drop policy if exists approvals_insert_requester on public.myria_approvals;
+drop policy if exists approvals_update_owner on public.myria_approvals;
+drop policy if exists approvals_delete_owner on public.myria_approvals;
+create policy approvals_select_member on public.myria_approvals for select to authenticated using (private.has_project_access(project_id,false));
+create policy approvals_insert_requester on public.myria_approvals for insert to authenticated with check (requested_by=auth.uid() and private.has_project_access(project_id,true));
+create policy approvals_update_owner on public.myria_approvals for update to authenticated using (private.is_project_owner(project_id)) with check (private.is_project_owner(project_id) and decided_by=auth.uid());
+create policy approvals_delete_owner on public.myria_approvals for delete to authenticated using (private.is_project_owner(project_id));
+grant select,insert,update,delete on public.myria_approvals to authenticated;
