@@ -1,14 +1,14 @@
 {
-  "name":"reforge-bootstrap",
+  "name":"reforge",
   "version":"1.0.0",
   "private":true,
   "scripts":{
-    "preinstall":"node unpack.mjs",
-    "dev":"next dev",
-    "typecheck":"tsc --noEmit",
-    "lint":"eslint .",
-    "test":"vitest run",
-    "build":"npm run typecheck && npm run lint && npm test && next build",
+    "prepare:source":"node unpack.mjs",
+    "dev":"npm run prepare:source && next dev",
+    "typecheck":"npm run prepare:source && tsc --noEmit",
+    "lint":"npm run prepare:source && eslint .",
+    "test":"npm run prepare:source && vitest run",
+    "build":"npm run prepare:source && tsc --noEmit && eslint . && vitest run && next build",
     "start":"next start"
   },
   "dependencies":{
