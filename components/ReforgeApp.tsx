@@ -1,12 +1,12 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Bot, ChevronDown, CircleUserRound, Cloud, CloudOff, GripVertical, LogIn, Mic, MicOff, Plus, Save, Settings, Sparkles, Users, Volume2, VolumeX, X } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { addGuestGoal, createGuestState, loadGuestState, newGuestProject, saveGuestState, upsertGuestNote } from '@/lib/guestStore';
+import { BookOpen, Bot, ChevronDown, CircleUserRound, Cloud, CloudOff, GripVertical, LogIn, Plus, Save, Sparkles, Users, Volume2, VolumeX, X } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { addGuestGoal, loadGuestState, newGuestProject, saveGuestState, upsertGuestNote } from '@/lib/guestStore';
 import { canEdit, inferSection, slugify } from '@/lib/story';
 import type { AuthMode, GuestState, MyriaGoal, MyriaMessage, Note, Profile, Project, Role, Section } from '@/lib/types';
-import type { Session, User } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 
 const uid=()=>crypto.randomUUID();
 type AuthTab='signin'|'signup'|'admin';
@@ -48,12 +48,12 @@ function AuthGate({onGuest}:{onGuest:()=>void}){
 }
 
 export default function ReforgeApp(){
-  const [booted,setBooted]=useState(false); const [session,setSession]=useState<Session|null>(null); const [mode,setMode]=useState<AuthMode|null>(null); const [user,setUser]=useState<User|null>(null);
+  const [booted,setBooted]=useState(false); const [mode,setMode]=useState<AuthMode|null>(null); const [user,setUser]=useState<User|null>(null);
   const [guest,setGuest]=useState<GuestState|null>(null); const [projects,setProjects]=useState<Project[]>([]); const [sections,setSections]=useState<Section[]>([]); const [notes,setNotes]=useState<Note[]>([]); const [profile,setProfile]=useState<Profile|null>(null); const [activeProjectId,setActiveProjectId]=useState(''); const [activeSectionId,setActiveSectionId]=useState('');
   const [cloudBusy,setCloudBusy]=useState(false); const [toast,setToast]=useState(''); const [modal,setModal]=useState<'note'|'section'|'profile'|'collab'|null>(null);
   const [newTitle,setNewTitle]=useState(''); const [newBody,setNewBody]=useState(''); const [sectionTitle,setSectionTitle]=useState(''); const [inviteEmail,setInviteEmail]=useState(''); const [inviteRole,setInviteRole]=useState<'editor'|'viewer'>('editor');
   const [messages,setMessages]=useState<MyriaMessage[]>([{id:'welcome',role:'assistant',content:"I'm Myria. I keep the project coherent while you make it interesting. Ask me to brainstorm, inspect a character, find gaps, or plan the next writing move.",createdAt:Date.now()}]);
-  const [chat,setChat]=useState(''); const [myriaStatus,setMyriaStatus]=useState<MyriaStatus>('idle'); const [muted,setMuted]=useState(false); const [goals,setGoals]=useState<MyriaGoal[]>([]); const [profileOpen,setProfileOpen]=useState(false);
+  const [chat,setChat]=useState(''); const [myriaStatus,setMyriaStatus]=useState<MyriaStatus>('idle'); const [muted,setMuted]=useState(false); const [goals,setGoals]=useState<MyriaGoal[]>([]);
   const [profileName,setProfileName]=useState(''); const [profileBio,setProfileBio]=useState(''); const [profileAvatar,setProfileAvatar]=useState('');
   const saveTimers=useRef<Record<string,ReturnType<typeof setTimeout>>>({}); const audioRef=useRef<HTMLAudioElement|null>(null); const voiceAbort=useRef<AbortController|null>(null); const speechQueue=useRef<string[]>([]); const speakingRef=useRef(false);
 
@@ -68,21 +68,23 @@ export default function ReforgeApp(){
     if(pErr){notify(pErr.message);setCloudBusy(false);return;}
     const ps=(pRows??[]) as Project[];
     const memberships=ps.length?await supabase.from('project_members').select('project_id,role').in('project_id',ps.map(p=>p.id)):({data:[]} as const);
-    const roleMap=new Map((memberships.data??[]).map((m:any)=>[m.project_id,m.role])); ps.forEach(p=>p.role=(roleMap.get(p.id)??(p.owner_id===currentUser.id?'owner':'viewer')) as Role);
-    setProjects(ps);setProfile(prof as Profile|null);setProfileName((prof as any)?.display_name??'Creator');setProfileBio((prof as any)?.bio??'');setProfileAvatar((prof as any)?.avatar_url??'');
+    const membershipRows=(memberships.data??[]) as Array<{project_id:string;role:Role}>;
+    const roleMap=new Map(membershipRows.map(m=>[m.project_id,m.role])); ps.forEach(p=>p.role=(roleMap.get(p.id)??(p.owner_id===currentUser.id?'owner':'viewer')) as Role);
+    const cloudProfile=prof as Profile|null;
+    setProjects(ps);setProfile(cloudProfile);setProfileName(cloudProfile?.display_name??'Creator');setProfileBio(cloudProfile?.bio??'');setProfileAvatar(cloudProfile?.avatar_url??'');
     const target=activeProjectId&&ps.some(p=>p.id===activeProjectId)?activeProjectId:ps[0]?.id??'';setActiveProjectId(target);
-    if(target){const [{data:ss},{data:nn},{data:gg}]=await Promise.all([supabase.from('sections').select('*').eq('project_id',target).order('position'),supabase.from('notes').select('*').eq('project_id',target).order('position'),supabase.from('myria_goals').select('*').eq('project_id',target).order('created_at',{ascending:false})]);setSections((ss??[]) as Section[]);setNotes((nn??[]) as Note[]);setActiveSectionId((ss?.[0] as any)?.id??'');setGoals((gg??[]).map((g:any)=>({id:g.id,title:g.title||g.goal,description:g.description,reason:g.reason,priority:g.priority,status:g.status,tasks:[]})));}
+    if(target){const [{data:ss},{data:nn},{data:gg}]=await Promise.all([supabase.from('sections').select('*').eq('project_id',target).order('position'),supabase.from('notes').select('*').eq('project_id',target).order('position'),supabase.from('myria_goals').select('*').eq('project_id',target).order('created_at',{ascending:false})]);setSections((ss??[]) as Section[]);setNotes((nn??[]) as Note[]);setActiveSectionId((ss?.[0] as Section|undefined)?.id??'');const goalRows=(gg??[]) as Array<{id:string;title?:string|null;goal:string;description:string;reason:string;priority:number;status:string}>;setGoals(goalRows.map(g=>({id:g.id,title:g.title||g.goal,description:g.description,reason:g.reason,priority:g.priority,status:g.status,tasks:[]})));}
     setCloudBusy(false);
   },[activeProjectId,notify]);
 
-  useEffect(()=>{if(!supabase){setBooted(true);return;}supabase.auth.getSession().then(({data})=>{setSession(data.session);setUser(data.session?.user??null);if(data.session){setMode('account');loadCloud(data.session.user);}setBooted(true)});const {data}=supabase.auth.onAuthStateChange((_event,s)=>{setSession(s);setUser(s?.user??null);if(s){setMode('account');queueMicrotask(()=>loadCloud(s.user));}else if(mode==='account'){setMode(null);}});return()=>data.subscription.unsubscribe();},[loadCloud,mode]);
+  useEffect(()=>{if(!supabase){setBooted(true);return;}supabase.auth.getSession().then(({data})=>{setUser(data.session?.user??null);if(data.session){setMode('account');loadCloud(data.session.user);}setBooted(true)});const {data}=supabase.auth.onAuthStateChange((_event,s)=>{setUser(s?.user??null);if(s){setMode('account');queueMicrotask(()=>loadCloud(s.user));}else{setMode(null);}});return()=>data.subscription.unsubscribe();},[loadCloud]);
   useEffect(()=>{if(mode==='guest'&&guest)saveGuestState(guest)},[guest,mode]);
   useEffect(()=>{if(mode==='guest'&&guest){setProjects(guest.projects);setSections(guest.sections);setNotes(guest.notes);setActiveProjectId(guest.activeProjectId);setProfile({user_id:'guest',display_name:guest.profile.display_name,bio:guest.profile.bio});setGoals(guest.goals)}},[guest,mode]);
   useEffect(()=>{if(projectSections.length&&!projectSections.some(s=>s.id===activeSectionId))setActiveSectionId(projectSections[0].id)},[projectSections,activeSectionId]);
   useEffect(()=>{if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>undefined)},[]);
 
   function enterGuest(){const state=loadGuestState();setGuest(state);setMode('guest');sessionStorage.setItem('reforge-guest','1');}
-  async function switchProject(id:string){setActiveProjectId(id);if(mode==='guest'&&guest){setGuest({...guest,activeProjectId:id});return;}if(supabase){setCloudBusy(true);const [{data:ss},{data:nn},{data:gg}]=await Promise.all([supabase.from('sections').select('*').eq('project_id',id).order('position'),supabase.from('notes').select('*').eq('project_id',id).order('position'),supabase.from('myria_goals').select('*').eq('project_id',id).order('created_at',{ascending:false})]);setSections((ss??[]) as Section[]);setNotes((nn??[]) as Note[]);setActiveSectionId((ss?.[0] as any)?.id??'');setGoals((gg??[]).map((g:any)=>({id:g.id,title:g.title||g.goal,description:g.description,reason:g.reason,priority:g.priority,status:g.status,tasks:[]})));setCloudBusy(false)}}
+  async function switchProject(id:string){setActiveProjectId(id);if(mode==='guest'&&guest){setGuest({...guest,activeProjectId:id});return;}if(supabase){setCloudBusy(true);const [{data:ss},{data:nn},{data:gg}]=await Promise.all([supabase.from('sections').select('*').eq('project_id',id).order('position'),supabase.from('notes').select('*').eq('project_id',id).order('position'),supabase.from('myria_goals').select('*').eq('project_id',id).order('created_at',{ascending:false})]);setSections((ss??[]) as Section[]);setNotes((nn??[]) as Note[]);setActiveSectionId((ss?.[0] as Section|undefined)?.id??'');const goalRows=(gg??[]) as Array<{id:string;title?:string|null;goal:string;description:string;reason:string;priority:number;status:string}>;setGoals(goalRows.map(g=>({id:g.id,title:g.title||g.goal,description:g.description,reason:g.reason,priority:g.priority,status:g.status,tasks:[]})));setCloudBusy(false)}}
   async function createProject(){const title=prompt('Project title')?.trim();if(!title)return;if(mode==='guest'&&guest){const next=newGuestProject(guest,title);setGuest(next);notify('Project created locally.');return;}if(supabase&&user){const {data,error}=await supabase.from('projects').insert({owner_id:user.id,title,description:''}).select().single();if(error){notify(error.message);return;}await loadCloud(user);if(data)await switchProject(data.id);notify('Cloud project created.')}}
   async function addSection(e:FormEvent){e.preventDefault();const title=sectionTitle.trim();if(!title||!activeProjectId)return;const section:Section={id:uid(),project_id:activeProjectId,title,slug:slugify(title)||`section-${Date.now()}`,position:projectSections.length,is_system:false,created_by:user?.id};if(mode==='guest'&&guest){setGuest({...guest,sections:[...guest.sections,section]});setActiveSectionId(section.id);}else if(supabase&&user){const {data,error}=await supabase.from('sections').insert({...section,id:undefined,created_by:user.id}).select().single();if(error){notify(error.message);return;}setSections(v=>[...v,data as Section]);setActiveSectionId(data.id);}setSectionTitle('');setModal(null);notify('Section added.');}
   async function addNote(e:FormEvent){e.preventDefault();if(!activeProjectId||!newBody.trim())return;const target=inferSection(newBody,projectSections)??activeSection?.id;const targetSection=projectSections.find(s=>s.id===target);const note:Note={id:uid(),project_id:activeProjectId,author_id:user?.id,section_id:target,title:newTitle.trim()||'Untitled fragment',body:newBody.trim(),category:targetSection?.title??'Brainstorming',position:notes.filter(n=>n.section_id===target).length};if(mode==='guest'&&guest){setGuest(upsertGuestNote(guest,note));}else if(supabase&&user){const {data,error}=await supabase.from('notes').insert({...note,id:undefined,author_id:user.id}).select().single();if(error){notify(error.message);return;}setNotes(v=>[...v,data as Note]);}setNewTitle('');setNewBody('');setModal(null);if(target)setActiveSectionId(target);notify(`Saved to ${targetSection?.title??'the project'}.`);}
