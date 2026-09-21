@@ -5,7 +5,7 @@ import { BookOpen, Bot, ChevronDown, CircleUserRound, Cloud, CloudOff, GripVerti
 import { supabase } from '@/lib/supabase';
 import { addGuestGoal, loadGuestState, newGuestProject, saveGuestState, upsertGuestNote } from '@/lib/guestStore';
 import { canEdit, inferSection, slugify } from '@/lib/story';
-import type { AuthMode, GuestState, MyriaGoal, MyriaMessage, Note, Profile, Project, Role, Section } from '@/lib/types';
+import type { AuthMode, GuestState, MyriaGoal, MyriaMessage, MyriaTask, Note, Profile, Project, Role, Section } from '@/lib/types';
 import type { User } from '@supabase/supabase-js';
 
 const uid=()=>crypto.randomUUID();
@@ -78,13 +78,15 @@ export default function ReforgeApp(){
 
   const loadProjectMemory=useCallback(async(id:string)=>{
     if(!supabase||!id)return;
-    const [{data:gg,error:gErr},{data:cc,error:cErr}]=await Promise.all([
+    const [{data:gg,error:gErr},{data:tt,error:tErr},{data:cc,error:cErr}]=await Promise.all([
       supabase.from('myria_goals').select('*').eq('project_id',id).order('created_at',{ascending:false}),
+      supabase.from('myria_tasks').select('*').eq('project_id',id).order('created_at',{ascending:true}),
       supabase.from('myria_conversations').select('id,role,content,created_at').eq('project_id',id).order('created_at',{ascending:true}).limit(60)
     ]);
-    if(gErr||cErr){notify((gErr??cErr)?.message??'Myria memory sync failed.');return;}
+    if(gErr||tErr||cErr){notify((gErr??tErr??cErr)?.message??'Myria memory sync failed.');return;}
     const goalRows=(gg??[]) as Array<{id:string;title?:string|null;goal:string;description:string;reason:string;priority:number;status:string}>;
-    setGoals(goalRows.map(g=>({id:g.id,title:g.title||g.goal,description:g.description,reason:g.reason,priority:g.priority,status:g.status,tasks:[]})));
+    const taskRows=(tt??[]) as Array<{id:string;goal_id:string;description:string;status:string;risk_level:'low'|'medium'|'high';attempts:number;max_attempts:number;verification:string;reflection:string}>;
+    setGoals(goalRows.map(g=>({id:g.id,title:g.title||g.goal,description:g.description,reason:g.reason,priority:g.priority,status:g.status,tasks:taskRows.filter(t=>t.goal_id===g.id).map(t=>({id:t.id,description:t.description,status:t.status,riskLevel:t.risk_level,attempts:t.attempts,maxAttempts:t.max_attempts,verification:t.verification,reflection:t.reflection}))})));
     const conversationRows=(cc??[]) as Array<{id:string;role:'user'|'assistant';content:string;created_at:string}>;
     setMessages(conversationRows.length?conversationRows.map(row=>({id:row.id,role:row.role,content:row.content,createdAt:Date.parse(row.created_at)})):[{id:'welcome',role:'assistant',content:MYRIA_WELCOME,createdAt:Date.now()}]);
   },[notify]);
@@ -135,7 +137,70 @@ export default function ReforgeApp(){
   async function invite(e:FormEvent){e.preventDefault();if(!supabase||!user||!activeProjectId)return;const email=inviteEmail.trim().toLowerCase()||null;const {data,error}=await supabase.from('collaboration_invites').insert({project_id:activeProjectId,created_by:user.id,email,role:inviteRole}).select('token').single();if(error){notify(error.message);return;}const link=`${window.location.origin}/invite/${data.token}`;setInviteLink(link);setInviteEmail('');try{await navigator.clipboard.writeText(link);notify('Private invite link created and copied.');}catch{notify('Private invite link created. Copy it from this panel.')}}
 
   const projectContext=()=>({project:activeProject?{title:activeProject.title,description:activeProject.description}:null,sections:projectSections.map(s=>s.title),notes:notes.filter(n=>n.project_id===activeProjectId).slice(0,80).map(n=>({title:n.title,body:n.body,category:n.category})),goals:goals.slice(0,8).map(g=>({title:g.title,status:g.status}))});
-  async function persistGoal(suggestion:{title:string;description:string;reason:string;priority:number;tasks:{description:string;riskLevel:'low'|'medium'|'high'}[]}){const goal:MyriaGoal={id:uid(),title:suggestion.title,description:suggestion.description,reason:suggestion.reason,priority:suggestion.priority,status:'planned',tasks:suggestion.tasks.map(t=>({id:uid(),description:t.description,status:'planned',riskLevel:t.riskLevel,attempts:0,maxAttempts:3}))};setGoals(v=>[goal,...v]);if(mode==='guest'&&guest){setGuest(addGuestGoal(guest,goal));return;}if(supabase&&user){const {data:g,error}=await supabase.from('myria_goals').insert({user_id:user.id,project_id:activeProjectId,goal:goal.title,title:goal.title,description:goal.description,reason:goal.reason,priority:goal.priority,status:'planned'}).select().single();if(error)return;for(const task of goal.tasks){await supabase.from('myria_tasks').insert({goal_id:g.id,project_id:activeProjectId,user_id:user.id,description:task.description,risk_level:task.riskLevel,status:'planned',attempts:0,max_attempts:3})}}}
+  async function persistGoal(suggestion:{title:string;description:string;reason:string;priority:number;tasks:{description:string;riskLevel:'low'|'medium'|'high'}[]}){
+    const goal:MyriaGoal={id:uid(),title:suggestion.title,description:suggestion.description,reason:suggestion.reason,priority:suggestion.priority,status:'planned',tasks:suggestion.tasks.map(t=>({id:uid(),description:t.description,status:'planned',riskLevel:t.riskLevel,attempts:0,maxAttempts:3}))};
+    setGoals(v=>[goal,...v]);
+    if(mode==='guest'&&guest){setGuest(addGuestGoal(guest,goal));return;}
+    if(supabase&&user){
+      const {data:g,error}=await supabase.from('myria_goals').insert({user_id:user.id,project_id:activeProjectId,goal:goal.title,title:goal.title,description:goal.description,reason:goal.reason,priority:goal.priority,status:'planned'}).select().single();
+      if(error)return;
+      const cloudTasks:MyriaTask[]=[];
+      for(const task of goal.tasks){
+        const {data:t}=await supabase.from('myria_tasks').insert({goal_id:g.id,project_id:activeProjectId,user_id:user.id,description:task.description,risk_level:task.riskLevel,status:'planned',attempts:0,max_attempts:3}).select().single();
+        if(t)cloudTasks.push({id:t.id,description:t.description,status:t.status,riskLevel:t.risk_level,attempts:t.attempts,maxAttempts:t.max_attempts,verification:t.verification,reflection:t.reflection});
+      }
+      setGoals(current=>current.map(item=>item.id===goal.id?{...goal,id:g.id,tasks:cloudTasks}:item));
+    }
+  }
+
+  function updateTaskState(goalId:string,taskId:string,patch:Partial<MyriaTask>){
+    setGoals(current=>current.map(goal=>goal.id===goalId?{...goal,tasks:goal.tasks.map(task=>task.id===taskId?{...task,...patch}:task)}:goal));
+    if(mode==='guest')setGuest(current=>current?{...current,goals:current.goals.map(goal=>goal.id===goalId?{...goal,tasks:goal.tasks.map(task=>task.id===taskId?{...task,...patch}:task)}:goal)}:current);
+  }
+
+  async function logTaskActivity(goalId:string,taskId:string,status:string,reason:string,action:string,result:string,verification:string,reflection:string,retryCount:number){
+    if(mode!=='account'||!supabase||!user||!activeProjectId)return;
+    await supabase.from('myria_activity').insert({project_id:activeProjectId,user_id:user.id,goal_id:goalId,task_id:taskId,status,reason,action,resources:['project_context'],result,verification,reflection,retry_count:retryCount});
+  }
+
+  async function runMyriaTask(goalId:string,task:MyriaTask){
+    if(task.riskLevel!=='low'){
+      updateTaskState(goalId,task.id,{status:'waiting_approval'});
+      if(mode==='account'&&supabase&&user){
+        await supabase.from('myria_tasks').update({status:'waiting_approval'}).eq('id',task.id);
+        await supabase.from('myria_approvals').upsert({project_id:activeProjectId,task_id:task.id,requested_by:user.id,risk_level:task.riskLevel==='high'?'high':'medium',status:'pending',reason:`Myria requested approval before executing: ${task.description}`},{onConflict:'task_id'});
+      }
+      notify(`${task.riskLevel==='high'?'High':'Medium'}-risk task is waiting for owner approval.`);
+      return;
+    }
+    let taskText=task.description;
+    let latest: {actualResult:string;verification:{passed:boolean;evidence:string[]};reflection:string;revisedTask:string|null}|null=null;
+    const maxAttempts=Math.min(3,Math.max(1,task.maxAttempts||3));
+    for(let attempt=Math.max(1,task.attempts+1);attempt<=maxAttempts;attempt++){
+      updateTaskState(goalId,task.id,{status:'working',attempts:attempt});
+      if(mode==='account'&&supabase)await supabase.from('myria_tasks').update({status:'working',attempts:attempt}).eq('id',task.id);
+      try{
+        const res=await fetch('/api/myria/task',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({task:taskText,context:projectContext(),attempt})});
+        const data=await res.json();if(!res.ok)throw new Error(data.error||'Task execution failed.');latest=data;
+        const evidence=data.verification.evidence.join(' · ');
+        await logTaskActivity(goalId,task.id,data.verification.passed?'complete':'retrying',task.description,taskText,data.actualResult,evidence,data.reflection,attempt-1);
+        if(data.verification.passed){
+          const patch={status:'complete',attempts:attempt,verification:evidence,reflection:data.reflection};updateTaskState(goalId,task.id,patch);
+          if(mode==='account'&&supabase)await supabase.from('myria_tasks').update({status:'complete',attempts:attempt,actual_result:data.actualResult,verification:evidence,reflection:data.reflection,completed_at:new Date().toISOString()}).eq('id',task.id);
+          notify('Myria verified the task and marked it complete.');return;
+        }
+        taskText=data.revisedTask||taskText;
+      }catch(err){
+        const message=err instanceof Error?err.message:'Task execution failed.';latest={actualResult:message,verification:{passed:false,evidence:[]},reflection:'The task service could not complete this attempt.',revisedTask:null};
+        await logTaskActivity(goalId,task.id,'retrying',task.description,taskText,message,'',latest.reflection,attempt-1);
+      }
+    }
+    const reflection=latest?.reflection||'Verification did not pass within the bounded retry limit.';
+    updateTaskState(goalId,task.id,{status:'needs_human_review',attempts:maxAttempts,verification:latest?.verification.evidence.join(' · ')||'',reflection});
+    if(mode==='account'&&supabase)await supabase.from('myria_tasks').update({status:'needs_human_review',attempts:maxAttempts,verification:latest?.verification.evidence.join(' · ')||'',reflection}).eq('id',task.id);
+    notify('Myria reached the retry limit and needs human review.');
+  }
+
   async function persistConversation(role:'user'|'assistant',content:string){
     if(mode!=='account'||!supabase||!user||!activeProjectId)return;
     const {error}=await supabase.from('myria_conversations').insert({project_id:activeProjectId,user_id:user.id,role,content});
@@ -173,7 +238,7 @@ export default function ReforgeApp(){
         <div className="chat-log">{messages.map(m=><div key={m.id} className={`bubble ${m.role}`}><small>{m.role==='assistant'?'Myria':'You'}</small>{m.content}</div>)}</div>
         <form className="chat-form" onSubmit={sendMyria}><input value={chat} onChange={e=>setChat(e.target.value)} onFocus={()=>setMyriaStatus('observing')} onBlur={()=>myriaStatus==='observing'&&setMyriaStatus('idle')} placeholder="Ask Myria about the project…"/><button className="send-btn" aria-label="Send"><Sparkles size={17}/></button></form>
         <div className="quick-actions"><button onClick={()=>sendMyria(undefined,'Scan this project and identify the single most useful next creative action.')}><Sparkles size={14}/> Project scan</button><button onClick={()=>sendMyria(undefined,'Summarize the current project from the notes, including unresolved contradictions or gaps.')}><BookOpen size={14}/> Summarize</button></div>
-        <div className="goals"><div className="subhead"><strong>Myria goals</strong><span>{goals.length}</span></div>{goals.slice(0,4).map(g=><div className="goal" key={g.id}><span>{g.status}</span><strong>{g.title}</strong><p>{g.reason}</p></div>)}{!goals.length&&<p className="muted-copy">Structured suggestions will appear here when a useful next step is clear.</p>}</div>
+        <div className="goals"><div className="subhead"><strong>Myria goals</strong><span>{goals.length}</span></div>{goals.slice(0,4).map(g=><div className="goal" key={g.id}><span>{g.status}</span><strong>{g.title}</strong><p>{g.reason}</p>{g.tasks.map(task=><div className="goal-task" key={task.id}><div><small>{task.riskLevel} · {task.status} · {task.attempts}/{task.maxAttempts}</small><p>{task.description}</p>{task.verification&&<em>{task.verification}</em>}</div>{!['complete','needs_human_review','waiting_approval'].includes(task.status)&&<button className="mini-run" onClick={()=>void runMyriaTask(g.id,task)}>{task.riskLevel==='low'?'Run':'Request approval'}</button>}</div>)}</div>)}{!goals.length&&<p className="muted-copy">Structured suggestions will appear here when a useful next step is clear.</p>}</div>
       </aside>
     </div>
   </main>
