@@ -9,7 +9,7 @@ export function inferSection(text:string, sections:Pick<Section,'title'|'id'>[])
     [/world|culture|society|nation|faction|economy/,['Worldbuilding']],
     [/lore|history|myth|legend|ancient|religion/,['Lore']],
     [/magic|power|ability|skill|energy|mana|system/,['Power Systems']],
-    [/plot|arc|twist|conflict|climax|ending|story beat/,['Plot Development','Outlines']],
+    [/\b(?:plot|arc|twist|conflict|climax|ending|story beat)\b/,['Plot Development','Outlines']],
     [/theme|meaning|motif|symbol|message/,['Themes']],
     [/research|source|reference|article|fact|link/,['Research']],
     [/rough draft|draft scene|draft chapter/,['Rough Draft']],
