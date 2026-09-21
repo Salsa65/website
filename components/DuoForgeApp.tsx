@@ -112,7 +112,8 @@ export default function DuoForgeApp(){
   const [installPrompt,setInstallPrompt]=useState<InstallPrompt|null>(null);
   const leadRef=useRef<Speaker>('Vesper');
   const ambientIndex=useRef(0);
-  const speechChain=useRef<Promise<void>>(Promise.resolve());\n  const audioUnlockedRef=useRef(false);
+  const speechChain=useRef<Promise<void>>(Promise.resolve());
+  const audioUnlockedRef=useRef(false);
 
   const activeSection=useMemo(()=>sections.find(s=>s.id===activeSectionId)||null,[sections,activeSectionId]);
 
@@ -183,7 +184,8 @@ export default function DuoForgeApp(){
     setMessages(prev=>[...prev,userMsg]); setInput(''); setBusy(true); setChatOpen(true);
     const lead=leadRef.current; leadRef.current=lead==='Vesper'?'Arden':'Vesper';
     try{
-      const history=messages.slice(-12).map(({speaker,text})=>({speaker,text}));\n      const endpoint=edgeUrl('reforge-duo-chat'); if(!endpoint||!SUPABASE_KEY)throw new Error('Cloud AI backend is not configured.');
+      const history=messages.slice(-12).map(({speaker,text})=>({speaker,text}));
+      const endpoint=edgeUrl('reforge-duo-chat'); if(!endpoint||!SUPABASE_KEY)throw new Error('Cloud AI backend is not configured.');
       const response=await fetch(endpoint,{method:'POST',headers:edgeHeaders(),body:JSON.stringify({message,notes:noteContext(),web:webEnabled,lead,history})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||'The companions could not answer.');
