@@ -17,7 +17,7 @@ begin
   end if;
 end $$;
 
-create or replace function public.preview_collaboration_invite(p_token uuid)
+create or replace function private.preview_collaboration_invite_impl(p_token uuid)
 returns table(project_title text, invite_role text, email_restricted boolean, expires_at timestamptz)
 language sql
 stable
@@ -32,11 +32,23 @@ as $$
     and i.expires_at>now()
   limit 1
 $$;
+revoke all on function private.preview_collaboration_invite_impl(uuid) from public;
+grant usage on schema private to anon, authenticated;
+grant execute on function private.preview_collaboration_invite_impl(uuid) to anon, authenticated;
 
+create or replace function public.preview_collaboration_invite(p_token uuid)
+returns table(project_title text, invite_role text, email_restricted boolean, expires_at timestamptz)
+language sql
+stable
+security invoker
+set search_path=private,pg_temp
+as $$
+  select * from private.preview_collaboration_invite_impl(p_token)
+$$;
 revoke all on function public.preview_collaboration_invite(uuid) from public;
 grant execute on function public.preview_collaboration_invite(uuid) to anon, authenticated;
 
-create or replace function public.accept_collaboration_invite(p_token uuid)
+create or replace function private.accept_collaboration_invite_impl(p_token uuid)
 returns uuid
 language plpgsql
 security definer
@@ -83,7 +95,18 @@ begin
   return inv.project_id;
 end;
 $$;
+revoke all on function private.accept_collaboration_invite_impl(uuid) from public, anon;
+grant execute on function private.accept_collaboration_invite_impl(uuid) to authenticated;
 
+create or replace function public.accept_collaboration_invite(p_token uuid)
+returns uuid
+language sql
+volatile
+security invoker
+set search_path=private,pg_temp
+as $$
+  select private.accept_collaboration_invite_impl(p_token)
+$$;
 revoke all on function public.accept_collaboration_invite(uuid) from public, anon;
 grant execute on function public.accept_collaboration_invite(uuid) to authenticated;
 
@@ -115,5 +138,9 @@ on public.collaboration_invites for delete to authenticated
 using (private.project_role(project_id)='owner' or private.is_admin());
 
 grant select,insert,update,delete on public.collaboration_invites to authenticated;
+
+create index if not exists idx_collaboration_invites_project on public.collaboration_invites(project_id);
+create index if not exists idx_collaboration_invites_created_by on public.collaboration_invites(created_by);
+create index if not exists idx_collaboration_invites_accepted_by on public.collaboration_invites(accepted_by);
 
 commit;
