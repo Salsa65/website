@@ -16,7 +16,14 @@ const BASE_PATH=process.env.NEXT_PUBLIC_BASE_PATH||'';
 const AI_ENDPOINT=`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/reforge-ai`;
 const SUPABASE_PUBLIC_KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||'';
 
-function Petals(){return <div className="petals" aria-hidden>{Array.from({length:14},(_,i)=><i key={i} style={{left:`${(i*17+7)%100}%`,animationDelay:`-${(i*2.7)%18}s`,animationDuration:`${12+(i%7)*2}s`}} />)}</div>}
+function Petals(){return <div className="petals" aria-hidden>{Array.from({length:26},(_,i)=><i key={i} style={{left:`${(i*17+7)%100}%`,animationDelay:`-${(i*2.7)%18}s`,animationDuration:`${10+(i%8)*1.8}s`}} />)}</div>}
+
+function AngelSky(){return <div className="angel-sky" aria-hidden>
+  {Array.from({length:10},(_,i)=><span key={i} className={`sky-angel ${i%2===0?'}light':'fallen} angel-${i+1}`}>
+    <span className="sky-halo"/><span className="sky-wing wing-left"/><span className="sky-body"/><span className="sky-wing wing-right"/>
+  </span>)}
+  <span className="sky-rift"/><span className="sky-mist mist-a"/><span className="sky-mist mist-b"/>
+</div>}
 
 function AscensionMark({compact=false}:{compact?:boolean}){return <div className={`ascension-mark ${compact?'compact':''}`} aria-label="Reforge Ascension"><span className="asc-halo"/><span className="asc-wing asc-light">❯</span><span className="asc-blade">†</span><span className="asc-wing asc-dark">❮</span></div>}
 
@@ -34,8 +41,8 @@ function AuthGate({onGuest,allowGuest=false}:{onGuest:()=>void;allowGuest?:boole
       }
     }catch(err){setError(err instanceof Error?err.message:'Authentication failed.')}finally{setBusy(false)}
   }
-  return <main className="gate ascension-gate"><Petals/><section className="gate-poster" aria-label="Reforge Ascension poster"><AscensionMark/><div className="poster-copy"><p className="eyebrow">ANGELS FALL · STORIES RISE</p><h1>REFORGE</h1><p>FROM CHAOS, CREATION.</p></div></section><section className="gate-card">
-    <AscensionMark compact/><p className="eyebrow">PRIVATE STORY FORGE</p><h1>REFORGE</h1><p className="gate-copy">This workspace is private. Existing members can sign in, while new collaborators receive access automatically from a valid invite link.</p>
+  return <main className="gate ascension-gate"><Petals/><AngelSky/><section className="gate-poster" aria-label="Reforge Ascension poster"><AscensionMark/><div className="poster-copy"><p className="eyebrow">ANGELS FALL · STORIES RISE</p><h1>REFORGE</h1><p>FROM CHAOS, CREATION.</p></div></section><section className="gate-card">
+    <AscensionMark compact/><p className="eyebrow">PUBLIC STORY FORGE</p><h1>REFORGE</h1><p className="gate-copy">Enter Reforge instantly as a guest, or sign in for persistent cloud projects, synchronization, collaboration, and your saved profile.</p>
     <div className="auth-tabs"><button onClick={()=>setTab('signin')} className={tab==='signin'?'active':''}>Sign In</button><button onClick={()=>setTab('signup')} className={tab==='signup'?'active':''}>Create Account</button></div>
     <form className="auth-form" onSubmit={submit}>
       {tab==='signup'&&<label>Display name<input value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" /></label>}
@@ -45,7 +52,7 @@ function AuthGate({onGuest,allowGuest=false}:{onGuest:()=>void;allowGuest?:boole
       <button className="primary wide" disabled={busy}>{busy?'Working…':tab==='signup'?'Create Account':'Sign In'}</button>
     </form>
     {allowGuest&&<><div className="or"><span/>or<span/></div><button className="ghost wide" onClick={onGuest}>Continue as Guest</button></>}
-    <p className="gate-foot">After the first private workspace is initialized, access comes only from an existing project membership or a valid private invite link.</p>
+    <p className="gate-foot">Reforge is publicly accessible. Guest work stays on this device; signed-in projects can sync through the configured cloud backend.</p>
   </section></main>
 }
 
@@ -215,7 +222,7 @@ export default function ReforgeApp(){
   function toggleMute(){const next=!muted;setMuted(next);if(next)stopSpeech();}
 
   if(!booted)return <div className="loading"><Petals/><div className="gate-mark">R</div><p>Heating the forge…</p></div>;
-  if(!mode)return <AuthGate onGuest={enterGuest} allowGuest={false}/>;
+  if(!mode)return <AuthGate onGuest={enterGuest} allowGuest/>;
   if(mode==='account'&&accessDenied)return <main className="gate"><Petals/><section className="gate-card"><div className="gate-mark">R</div><p className="eyebrow">PRIVATE WORKSPACE</p><h1>INVITATION REQUIRED</h1><p className="gate-copy">This account is valid, but it has not been granted access to a Reforge project. Open a private invite link from a project owner or editor and Reforge will add you automatically without an approval request.</p><button className="ghost wide" onClick={async()=>{await supabase?.auth.signOut();setMode(null)}}>Sign out</button></section></main>;
 
   return <div className="shell"><Petals/><header className="topbar">
@@ -235,7 +242,7 @@ export default function ReforgeApp(){
         <div className="notes-grid">{sectionNotes.length?sectionNotes.map(note=><article key={note.id} className="note-card" draggable={editable} onDragStart={e=>{e.dataTransfer.setData('text/reforge-note',note.id);e.dataTransfer.effectAllowed='move'}}><div className="drag"><GripVertical size={16}/></div><input className="note-title" value={note.title} readOnly={!editable} onChange={e=>updateNoteDraft(note.id,{title:e.target.value})}/><textarea className="note-body" value={note.body} readOnly={!editable} onChange={e=>updateNoteDraft(note.id,{body:e.target.value})}/><div className="note-foot"><span>{note.category}</span>{editable&&<button onClick={()=>deleteNote(note.id)}>Delete</button>}</div></article>):<div className="empty"><BookOpen size={34}/><strong>No fragments here yet.</strong><span>Add a note. Reforge routes new notes by their content, not their title.</span></div>}</div>
       </section>
 
-      <aside className="myria glass"><div className="myria-head"><div className={`myria-orb ${myriaStatus}`}><Bot size={24}/></div><div><p className="eyebrow">PROJECT ASSISTANT</p><h2>MYRIA</h2><span className="status-line">{myriaStatus==='thinking'?'Thinking…':myriaStatus==='talking'?'Speaking…':myriaStatus==='error'?'Text service unavailable':'Observing quietly'}</span></div><button className="icon-btn" onClick={toggleMute} title={muted?'Unmute Myria':'Mute Myria'}>{muted?<VolumeX size={18}/>:<Volume2 size={18}/>}</button></div>
+      <aside className="myria glass"><div className="myria-head"><div className={`myria-orb ${myriaStatus}`}><Bot className="myria-fallback" size={24}/><img className="myria-profile-image" src={`${BASE_PATH}/myria-profile.png`} alt="Myria" onError={e=>{e.currentTarget.style.display='none'}}/></div><div><p className="eyebrow">PROJECT ASSISTANT</p><h2>MYRIA</h2><span className="status-line">{myriaStatus==='thinking'?'Thinking…':myriaStatus==='talking'?'Speaking…':myriaStatus==='error'?'Text service unavailable':'Observing quietly'}</span></div><button className="icon-btn" onClick={toggleMute} title={muted?'Unmute Myria':'Mute Myria'}>{muted?<VolumeX size={18}/>:<Volume2 size={18}/>}</button></div>
         <div className="chat-log">{messages.map(m=><div key={m.id} className={`bubble ${m.role}`}><small>{m.role==='assistant'?'Myria':'You'}</small>{m.content}</div>)}</div>
         <form className="chat-form" onSubmit={sendMyria}><input value={chat} onChange={e=>setChat(e.target.value)} onFocus={()=>setMyriaStatus('observing')} onBlur={()=>myriaStatus==='observing'&&setMyriaStatus('idle')} placeholder="Ask Myria about the project…"/><button className="send-btn" aria-label="Send"><Sparkles size={17}/></button></form>
         <div className="quick-actions"><button onClick={()=>sendMyria(undefined,'Scan this project and identify the single most useful next creative action.')}><Sparkles size={14}/> Project scan</button><button onClick={()=>sendMyria(undefined,'Summarize the current project from the notes, including unresolved contradictions or gaps.')}><BookOpen size={14}/> Summarize</button></div>
