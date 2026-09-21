@@ -119,23 +119,23 @@ drop policy if exists collaboration_invites_delete on public.collaboration_invit
 
 create policy collaboration_invites_read
 on public.collaboration_invites for select to authenticated
-using (private.project_role(project_id) in ('owner','editor') or private.is_admin());
+using (private.project_role(project_id) in ('owner','editor'));
 
 create policy collaboration_invites_insert
 on public.collaboration_invites for insert to authenticated
 with check (
   created_by=(select auth.uid())
-  and (private.project_role(project_id) in ('owner','editor') or private.is_admin())
+  and (private.project_role(project_id) in ('owner','editor'))
 );
 
 create policy collaboration_invites_update
 on public.collaboration_invites for update to authenticated
-using (private.project_role(project_id)='owner' or private.is_admin())
-with check (private.project_role(project_id)='owner' or private.is_admin());
+using (private.project_role(project_id)='owner')
+with check (private.project_role(project_id)='owner');
 
 create policy collaboration_invites_delete
 on public.collaboration_invites for delete to authenticated
-using (private.project_role(project_id)='owner' or private.is_admin());
+using (private.project_role(project_id)='owner');
 
 grant select,insert,update,delete on public.collaboration_invites to authenticated;
 
@@ -150,17 +150,42 @@ language sql
 stable
 security definer
 set search_path=public,auth,pg_temp
-as $
+as $$
   select (select auth.uid()) is not null and (
-    private.is_admin()
-    or exists (
+    exists (
       select 1 from public.project_members pm
       where pm.user_id=(select auth.uid())
     )
+    or not exists (select 1 from public.projects)
   )
-$;
+$$;
 revoke all on function private.is_reforge_member() from public,anon;
 grant execute on function private.is_reforge_member() to authenticated;
+
+create or replace function private.can_bootstrap_reforge_impl()
+returns boolean
+language sql
+stable
+security definer
+set search_path=public,auth,pg_temp
+as $$
+  select (select auth.uid()) is not null
+    and not exists (select 1 from public.projects)
+$$;
+revoke all on function private.can_bootstrap_reforge_impl() from public,anon;
+grant execute on function private.can_bootstrap_reforge_impl() to authenticated;
+
+create or replace function public.can_bootstrap_reforge()
+returns boolean
+language sql
+stable
+security invoker
+set search_path=private,pg_temp
+as $$
+  select private.can_bootstrap_reforge_impl()
+$$;
+revoke all on function public.can_bootstrap_reforge() from public,anon;
+grant execute on function public.can_bootstrap_reforge() to authenticated;
 
 drop policy if exists projects_insert_owner on public.projects;
 create policy projects_insert_owner
@@ -171,3 +196,4 @@ with check (
 );
 
 commit;
+
