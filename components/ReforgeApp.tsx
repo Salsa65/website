@@ -15,6 +15,8 @@ const MYRIA_WELCOME="I'm Myria. I keep the project coherent while you make it in
 
 function Petals(){return <div className="petals" aria-hidden>{Array.from({length:14},(_,i)=><i key={i} style={{left:`${(i*17+7)%100}%`,animationDelay:`-${(i*2.7)%18}s`,animationDuration:`${12+(i%7)*2}s`}} />)}</div>}
 
+function AscensionMark({compact=false}:{compact?:boolean}){return <div className={`ascension-mark ${compact?'compact':''}`} aria-label="Reforge Ascension"><span className="asc-halo"/><span className="asc-wing asc-light">❯</span><span className="asc-blade">†</span><span className="asc-wing asc-dark">❮</span></div>}
+
 function AuthGate({onGuest,allowGuest=false}:{onGuest:()=>void;allowGuest?:boolean}){
   const [tab,setTab]=useState<AuthTab>('signin');
   const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [displayName,setDisplayName]=useState('');
@@ -29,8 +31,8 @@ function AuthGate({onGuest,allowGuest=false}:{onGuest:()=>void;allowGuest?:boole
       }
     }catch(err){setError(err instanceof Error?err.message:'Authentication failed.')}finally{setBusy(false)}
   }
-  return <main className="gate"><Petals/><section className="gate-card">
-    <div className="gate-mark">R</div><p className="eyebrow">PRIVATE STORY FORGE</p><h1>REFORGE</h1><p className="gate-copy">This workspace is private. Existing members can sign in, while new collaborators receive access automatically from a valid invite link.</p>
+  return <main className="gate ascension-gate"><Petals/><section className="gate-poster" aria-label="Reforge Ascension poster"><AscensionMark/><div className="poster-copy"><p className="eyebrow">ANGELS FALL · STORIES RISE</p><h1>REFORGE</h1><p>FROM CHAOS, CREATION.</p></div></section><section className="gate-card">
+    <AscensionMark compact/><p className="eyebrow">PRIVATE STORY FORGE</p><h1>REFORGE</h1><p className="gate-copy">This workspace is private. Existing members can sign in, while new collaborators receive access automatically from a valid invite link.</p>
     <div className="auth-tabs"><button onClick={()=>setTab('signin')} className={tab==='signin'?'active':''}>Sign In</button><button onClick={()=>setTab('signup')} className={tab==='signup'?'active':''}>Create Account</button></div>
     <form className="auth-form" onSubmit={submit}>
       {tab==='signup'&&<label>Display name<input value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" /></label>}
@@ -214,7 +216,7 @@ export default function ReforgeApp(){
   if(mode==='account'&&accessDenied)return <main className="gate"><Petals/><section className="gate-card"><div className="gate-mark">R</div><p className="eyebrow">PRIVATE WORKSPACE</p><h1>INVITATION REQUIRED</h1><p className="gate-copy">This account is valid, but it has not been granted access to a Reforge project. Open a private invite link from a project owner or editor and Reforge will add you automatically without an approval request.</p><button className="ghost wide" onClick={async()=>{await supabase?.auth.signOut();setMode(null)}}>Sign out</button></section></main>;
 
   return <div className="shell"><Petals/><header className="topbar">
-    <div className="brand"><div className="brand-mark">R</div><div><strong>REFORGE</strong><span>STORIES ARE MADE, THEN REMADE.</span></div></div>
+    <div className="brand"><AscensionMark compact/><div><strong>REFORGE</strong><span>STORIES ARE MADE, THEN REMADE.</span></div></div>
     <div className="top-actions"><span className="sync">{mode==='account'?<><Cloud size={14}/> Cloud</>:<><CloudOff size={14}/> Guest</>}</span><button className="icon-btn" onClick={()=>setModal('collab')} title="Collaboration"><Users size={18}/></button><button className="profile-btn" onClick={()=>setModal('profile')}>{profile?.avatar_url?<img src={profile.avatar_url} alt=""/>:<CircleUserRound size={20}/>}<span>{profile?.display_name??'Creator'}</span><ChevronDown size={14}/></button></div>
   </header>
 
