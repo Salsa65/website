@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, BookOpen, Brain, ChevronRight, Download, Globe2, Heart,
-  MessageCircle, Mic2, MoonStar, Pencil, Plus, Settings2, Sparkles,
+  MessageCircle, Mic2, Pencil, Plus, Settings2, Sparkles,
   Sword, Trash2, Volume2, VolumeX, WandSparkles, X
 } from 'lucide-react';
 import styles from './DuoForgeApp.module.css';
@@ -107,7 +107,7 @@ export default function DuoForgeApp(){
   const [installPrompt,setInstallPrompt]=useState<InstallPrompt|null>(null);
   const leadRef=useRef<Speaker>('Vesper');
   const ambientIndex=useRef(0);
-  const speechChain=useRef<Promise<void>>(Promise.resolve());
+  const speechChain=useRef<Promise<void>>(Promise.resolve());\n  const audioUnlockedRef=useRef(false);
 
   const activeSection=useMemo(()=>sections.find(s=>s.id===activeSectionId)||null,[sections,activeSectionId]);
 
@@ -134,7 +134,7 @@ export default function DuoForgeApp(){
   },[sections,messages,theme,webEnabled,ambientOn]);
 
   const queueSpeech=useCallback((text:string,speaker:Speaker)=>{
-    if(!voiceEnabled||!audioUnlocked||!text.trim())return;
+    if(!voiceEnabled||!audioUnlockedRef.current||!text.trim())return;
     speechChain.current=speechChain.current.then(async()=>{
       try{
         setTalking(speaker); setVoiceError('');
@@ -177,7 +177,7 @@ export default function DuoForgeApp(){
     setMessages(prev=>[...prev,userMsg]); setInput(''); setBusy(true); setChatOpen(true);
     const lead=leadRef.current; leadRef.current=lead==='Vesper'?'Arden':'Vesper';
     try{
-      const response=await fetch('/api/duo/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message,notes:noteContext(),web:webEnabled,lead})});
+      const history=messages.slice(-12).map(({speaker,text})=>({speaker,text}));\n      const response=await fetch('/api/duo/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message,notes:noteContext(),web:webEnabled,lead,history})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||'The companions could not answer.');
       const turns=(data.turns||[]) as Array<{speaker:Speaker;text:string;emotion?:Mood}>;
@@ -221,7 +221,7 @@ export default function DuoForgeApp(){
     await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null);
   }
   function unlockAudio(){
-    setAudioUnlocked(true); setVoiceEnabled(true); setVoiceError('');
+    audioUnlockedRef.current=true; setAudioUnlocked(true); setVoiceEnabled(true); setVoiceError('');
     const greeting='Voices online. Try not to look too pleased, Arden.';
     setMessages(prev=>[...prev,{id:uid(),speaker:'Vesper',text:greeting,emotion:'amused',createdAt:Date.now()}]);
     setTimeout(()=>queueSpeech(greeting,'Vesper'),0);
