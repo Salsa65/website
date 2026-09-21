@@ -2,10 +2,12 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft, BookOpen, Brain, ChevronRight, Download, Globe2, Heart,
-  MessageCircle, Mic2, Pencil, Plus, Settings2, Sparkles,
+  ArrowLeft, BookOpen, Brain, ChevronRight, Cloud, CloudOff, Download, Globe2, Heart,
+  LogIn, LogOut, MessageCircle, Mic2, Pencil, Plus, Settings2, Sparkles,
   Sword, Trash2, Volume2, VolumeX, WandSparkles, X
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import type { User } from '@supabase/supabase-js';
 import styles from './DuoForgeApp.module.css';
 
 type Speaker = 'Vesper' | 'Arden';
@@ -14,6 +16,8 @@ type Note = { id:string; title:string; body:string; updatedAt:number };
 type ForgeSection = { id:string; title:string; subtitle:string; icon:string; custom?:boolean; notes:Note[] };
 type ChatMessage = { id:string; speaker:'You'|Speaker; text:string; emotion?:string; sources?:string[]; createdAt:number };
 type InstallPrompt = Event & { prompt:()=>Promise<void>; userChoice:Promise<{outcome:'accepted'|'dismissed'}> };
+type CloudState = 'local'|'syncing'|'synced'|'error';
+type AuthMode = 'signin'|'signup';
 
 const STORE_KEY='reforge-duo-mobile-v1';
 const BASE_PATH=process.env.NEXT_PUBLIC_BASE_PATH||'';
@@ -88,6 +92,51 @@ function CompanionAvatar({speaker,mood,talking}:{speaker:Speaker;mood:Mood;talki
   </div>;
 }
 
+function CompanionBody({speaker,mood,talking}:{speaker:Speaker;mood:Mood;talking:boolean}){
+  const angel=speaker==='Arden';
+  return <figure className={styles.bodyAvatar} data-speaker={speaker} data-mood={mood} data-talking={talking}>
+    <svg viewBox="0 0 280 520" role="img" aria-label={speaker+' animated companion'}>
+      <defs>
+        <linearGradient id={speaker+'Wing'} x1="0" x2="1">
+          <stop offset="0" stopColor={angel?'#ffffff':'#12060b'}/>
+          <stop offset="1" stopColor={angel?'#9fb7ff':'#c5264c'}/>
+        </linearGradient>
+        <linearGradient id={speaker+'Cloth'} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={angel?'#f5f4ff':'#3a101c'}/>
+          <stop offset="1" stopColor={angel?'#8899d1':'#10070b'}/>
+        </linearGradient>
+      </defs>
+      <g className={styles.bodyWings}>
+        <path className={styles.bodyWingLeft} d="M122 178 C76 98 13 102 15 224 C46 189 78 184 112 206 C60 212 38 257 49 312 C75 274 99 256 125 252 Z" fill={'url(#'+speaker+'Wing)'}/>
+        <path className={styles.bodyWingRight} d="M158 178 C204 98 267 102 265 224 C234 189 202 184 168 206 C220 212 242 257 231 312 C205 274 181 256 155 252 Z" fill={'url(#'+speaker+'Wing)'}/>
+      </g>
+      {angel
+        ? <ellipse className={styles.bodyHalo} cx="140" cy="72" rx="48" ry="11" fill="none" stroke="#fff7dd" strokeWidth="5"/>
+        : <g className={styles.bodyHorns}><path d="M118 92 Q91 56 104 33" fill="none" stroke="#9e1f3d" strokeWidth="9" strokeLinecap="round"/><path d="M162 92 Q189 56 176 33" fill="none" stroke="#9e1f3d" strokeWidth="9" strokeLinecap="round"/></g>}
+      <g className={styles.bodyCore}>
+        <path d="M106 115 Q140 86 174 115 L181 173 Q171 202 140 205 Q109 202 99 173 Z" fill={angel?'#efeaff':'#241017'}/>
+        <path className={styles.bodyHair} d={angel
+          ? "M100 128 Q90 78 140 72 Q194 78 181 147 Q166 115 143 112 Q119 113 100 128 M105 127 Q91 185 106 246 Q125 208 132 166 M176 128 Q191 187 173 244 Q158 211 150 164"
+          : "M99 129 Q101 77 141 74 Q184 77 183 131 Q168 112 145 109 Q122 108 99 129 M105 121 Q83 160 96 221 Q111 188 126 156 M177 120 Q199 161 183 220 Q171 184 155 155"} fill={angel?'#f4f0ff':'#171016'}/>
+        <ellipse cx="140" cy="133" rx="31" ry="36" fill={angel?'#f6d9d0':'#d5a79d'}/>
+        <g className={styles.bodyEyes}>
+          <ellipse cx="128" cy="134" rx="4" ry="3" fill={angel?'#d7aa41':'#e72f57'}/>
+          <ellipse cx="152" cy="134" rx="4" ry="3" fill={angel?'#d7aa41':'#e72f57'}/>
+        </g>
+        <path className={styles.bodyMouth} d="M133 151 Q140 155 147 151" fill="none" stroke="#6f3b44" strokeWidth="2" strokeLinecap="round"/>
+        <path d="M122 168 L113 207 L82 286 L105 301 L128 232 L129 430 L151 430 L151 232 L175 301 L198 286 L167 207 L158 168 Z" fill={'url(#'+speaker+'Cloth)'} stroke={angel?'#e9e9ff':'#70172c'} strokeWidth="2"/>
+        <path d="M127 430 L116 492 L135 493 L141 431 Z M153 430 L145 493 L164 493 L159 430 Z" fill={angel?'#d8d8ec':'#16090d'}/>
+        <path d="M82 286 L63 322 L76 329 L105 301 Z M198 286 L217 322 L204 329 L175 301 Z" fill={angel?'#f1d1c6':'#c89990'}/>
+      </g>
+      <g className={styles.bodyAura}>
+        <circle cx="140" cy="209" r="102" fill="none" stroke={angel?'#dce6ff':'#d62c52'} strokeWidth="2" opacity=".22"/>
+        <circle cx="140" cy="209" r="122" fill="none" stroke={angel?'#ffffff':'#8e1934'} strokeWidth="1" opacity=".13"/>
+      </g>
+    </svg>
+    <figcaption><strong>{speaker}</strong><span>{talking?'speaking':mood}</span></figcaption>
+  </figure>;
+}
+
 export default function DuoForgeApp(){
   const [sections,setSections]=useState<ForgeSection[]>(defaultSections);
   const [activeSectionId,setActiveSectionId]=useState<string|null>(null);
@@ -110,12 +159,41 @@ export default function DuoForgeApp(){
   const [talking,setTalking]=useState<Speaker|null>(null);
   const [voiceError,setVoiceError]=useState('');
   const [installPrompt,setInstallPrompt]=useState<InstallPrompt|null>(null);
+  const [user,setUser]=useState<User|null>(null);
+  const [cloudReady,setCloudReady]=useState(false);
+  const [cloudState,setCloudState]=useState<CloudState>('local');
+  const [authMode,setAuthMode]=useState<AuthMode>('signin');
+  const [authEmail,setAuthEmail]=useState('');
+  const [authPassword,setAuthPassword]=useState('');
+  const [authBusy,setAuthBusy]=useState(false);
+  const [authError,setAuthError]=useState('');
+  const [authNotice,setAuthNotice]=useState('');
   const leadRef=useRef<Speaker>('Vesper');
   const ambientIndex=useRef(0);
   const speechChain=useRef<Promise<void>>(Promise.resolve());
   const audioUnlockedRef=useRef(false);
+  const cloudTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
 
   const activeSection=useMemo(()=>sections.find(s=>s.id===activeSectionId)||null,[sections,activeSectionId]);
+
+  const applyMemory=useCallback((payload:unknown)=>{
+    if(!payload||typeof payload!=='object')return;
+    const data=payload as {sections?:ForgeSection[];messages?:ChatMessage[];theme?:string;webEnabled?:boolean;ambientOn?:boolean};
+    if(Array.isArray(data.sections)&&data.sections.length)setSections(data.sections);
+    if(Array.isArray(data.messages)&&data.messages.length)setMessages(data.messages.slice(-80));
+    if(typeof data.theme==='string')setTheme(data.theme);
+    if(typeof data.webEnabled==='boolean')setWebEnabled(data.webEnabled);
+    if(typeof data.ambientOn==='boolean')setAmbientOn(data.ambientOn);
+  },[]);
+
+  const loadCloudMemory=useCallback(async(userId:string)=>{
+    if(!supabase)return;
+    setCloudReady(false);setCloudState('syncing');
+    const {data,error}=await supabase.from('duo_memory').select('payload').eq('user_id',userId).maybeSingle();
+    if(error){setCloudState('error');setCloudReady(true);return;}
+    if(data?.payload)applyMemory(data.payload);
+    setCloudReady(true);setCloudState('synced');
+  },[applyMemory]);
 
   useEffect(()=>{
     try{
@@ -138,6 +216,42 @@ export default function DuoForgeApp(){
   useEffect(()=>{
     try{localStorage.setItem(STORE_KEY,JSON.stringify({sections,messages:messages.slice(-80),theme,webEnabled,ambientOn}))}catch{}
   },[sections,messages,theme,webEnabled,ambientOn]);
+
+
+  useEffect(()=>{
+    if(!supabase){setCloudReady(true);return;}
+    let alive=true;
+    void (async()=>{
+      const {data}=await supabase.auth.getSession();
+      if(!alive)return;
+      const next=data.session?.user??null;
+      setUser(next);
+      if(next)await loadCloudMemory(next.id);
+      else{setCloudReady(true);setCloudState('local');}
+    })();
+    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{
+      if(!alive)return;
+      const next=session?.user??null;
+      setUser(next);
+      if(next)queueMicrotask(()=>void loadCloudMemory(next.id));
+      else{setCloudReady(true);setCloudState('local');}
+    });
+    return()=>{alive=false;listener.subscription.unsubscribe();};
+  },[loadCloudMemory]);
+
+  useEffect(()=>{
+    if(!supabase||!user||!cloudReady)return;
+    if(cloudTimer.current)clearTimeout(cloudTimer.current);
+    cloudTimer.current=setTimeout(()=>{
+      void (async()=>{
+        setCloudState('syncing');
+        const payload={version:2,sections,messages:messages.slice(-80),theme,webEnabled,ambientOn};
+        const {error}=await supabase.from('duo_memory').upsert({user_id:user.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+        setCloudState(error?'error':'synced');
+      })();
+    },1200);
+    return()=>{if(cloudTimer.current)clearTimeout(cloudTimer.current);};
+  },[user,cloudReady,sections,messages,theme,webEnabled,ambientOn]);
 
   const queueSpeech=useCallback((text:string,speaker:Speaker)=>{
     if(!voiceEnabled||!audioUnlockedRef.current||!text.trim())return;
@@ -229,6 +343,29 @@ export default function DuoForgeApp(){
     if(!installPrompt)return;
     await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null);
   }
+
+  async function submitCloudAuth(e:FormEvent){
+    e.preventDefault();if(!supabase)return;
+    setAuthBusy(true);setAuthError('');setAuthNotice('');
+    try{
+      if(authMode==='signup'){
+        const {data,error}=await supabase.auth.signUp({email:authEmail,password:authPassword});
+        if(error)throw error;
+        if(!data.session)setAuthNotice('Account created. Check your email if confirmation is enabled, then sign in.');
+      }else{
+        const {error}=await supabase.auth.signInWithPassword({email:authEmail,password:authPassword});
+        if(error)throw error;
+      }
+    }catch(error){setAuthError(error instanceof Error?error.message:'Authentication failed.');}
+    finally{setAuthBusy(false);}
+  }
+
+  async function signOutCloud(){
+    if(!supabase)return;
+    await supabase.auth.signOut();
+    setUser(null);setCloudState('local');setCloudReady(true);
+  }
+
   function unlockAudio(){
     audioUnlockedRef.current=true; setAudioUnlocked(true); setVoiceEnabled(true); setVoiceError('');
     const greeting='Voices online. Try not to look too pleased, Arden.';
@@ -238,12 +375,19 @@ export default function DuoForgeApp(){
 
   return <main className={styles.app} data-theme={theme}>
     <BattleBackdrop theme={theme}/>
+    <div className={styles.bodyStage} aria-hidden>
+      <CompanionBody speaker="Vesper" mood={moods.Vesper} talking={talking==='Vesper'}/>
+      <CompanionBody speaker="Arden" mood={moods.Arden} talking={talking==='Arden'}/>
+    </div>
     {!audioUnlocked&&<button className={styles.audioGate} onClick={unlockAudio}><Volume2 size={20}/><span><strong>Enable companion voices</strong><small>One tap is required by mobile browsers before Vesper and Arden can speak automatically.</small></span></button>}
 
     <header className={styles.topbar}>
       <button className={styles.brand} onClick={()=>setActiveSectionId(null)} aria-label="Reforge home"><Sword size={19}/><span>REFORGE <b>DUO</b></span></button>
       <div className={styles.topActions}>
         {installPrompt&&<button className={styles.iconText} onClick={installApp}><Download size={16}/>Install</button>}
+        <button className={styles.cloudPill} data-state={cloudState} onClick={()=>setSettingsOpen(true)} title="Memory sync">
+          {user?<Cloud size={15}/>:<CloudOff size={15}/>}<span>{user?(cloudState==='syncing'?'Syncing…':cloudState==='error'?'Sync error':'Cloud memory'):'Local memory'}</span>
+        </button>
         <button className={styles.iconButton} onClick={()=>setVoiceEnabled(v=>!v)} title="Toggle voices">{voiceEnabled?<Volume2 size={18}/>:<VolumeX size={18}/>}</button>
         <button className={styles.iconButton} onClick={()=>setSettingsOpen(true)} title="Settings"><Settings2 size={18}/></button>
       </div>
@@ -321,6 +465,24 @@ export default function DuoForgeApp(){
     {settingsOpen&&<div className={styles.modalShade} onClick={()=>setSettingsOpen(false)}><section className={styles.modal} onClick={e=>e.stopPropagation()}>
       <button className={styles.modalClose} onClick={()=>setSettingsOpen(false)}><X size={18}/></button>
       <p className={styles.kicker}>COMPANION SYSTEM</p><h2>Settings</h2>
+
+      <div className={styles.cloudCard}>
+        <div className={styles.cloudCardHead}>
+          <span>{user?<Cloud size={17}/>:<CloudOff size={17}/>}</span>
+          <div><strong>{user?'Cloud memory active':'Local memory mode'}</strong><small>{user?'Notes and recent companion history sync to your Reforge account.':'Your work stays on this device until you sign in.'}</small></div>
+        </div>
+        {user?
+          <div className={styles.signedInRow}><span>{user.email||'Signed-in creator'}</span><button type="button" onClick={signOutCloud}><LogOut size={14}/>Sign out</button></div>:
+          <form className={styles.cloudAuth} onSubmit={submitCloudAuth}>
+            <div className={styles.authTabs}><button type="button" data-active={authMode==='signin'} onClick={()=>setAuthMode('signin')}>Sign in</button><button type="button" data-active={authMode==='signup'} onClick={()=>setAuthMode('signup')}>Create account</button></div>
+            <input type="email" required value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="Email"/>
+            <input type="password" minLength={8} required value={authPassword} onChange={e=>setAuthPassword(e.target.value)} placeholder="Password"/>
+            {authError&&<small className={styles.authError}>{authError}</small>}
+            {authNotice&&<small className={styles.authNotice}>{authNotice}</small>}
+            <button className={styles.cloudSubmit} disabled={authBusy}><LogIn size={14}/>{authBusy?'Working…':authMode==='signup'?'Create account':'Sign in & sync'}</button>
+          </form>}
+      </div>
+
       <label>Interface atmosphere<select value={theme} onChange={e=>setTheme(e.target.value)}><option value="clash">Crimson Clash</option><option value="cathedral">Storm Cathedral</option><option value="abyss">Abyssal Rain</option></select></label>
       <label className={styles.toggleRow}><span><strong>ElevenLabs voices</strong><small>Speak replies automatically after audio is unlocked.</small></span><input type="checkbox" checked={voiceEnabled} onChange={e=>setVoiceEnabled(e.target.checked)}/></label>
       <label className={styles.toggleRow}><span><strong>Ambient couple banter</strong><small>Occasional low-cost local chatter while the app is open.</small></span><input type="checkbox" checked={ambientOn} onChange={e=>setAmbientOn(e.target.checked)}/></label>
