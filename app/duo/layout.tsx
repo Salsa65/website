@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next';
 export const metadata: Metadata = {
   title: 'Reforge Duo — AI Story Forge',
   description: 'A mobile-first brainstorming and writing forge powered by Vesper and Arden.',
-  manifest: '/duo-manifest.webmanifest',
+  manifest: (process.env.NEXT_PUBLIC_BASE_PATH||'') + '/duo-manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Reforge Duo', statusBarStyle: 'black-translucent' },
 };
 
