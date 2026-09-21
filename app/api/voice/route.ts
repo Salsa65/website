@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireProjectAccess } from '@/lib/serverAuth';
 const DEFAULT_VOICE='KBiqSCotcD7IzLEkC5z6';
 export async function POST(req:NextRequest){
+  const body=await req.json().catch(()=>null) as null|{text?:string;projectId?:string};
+  if(!body?.projectId?.trim())return NextResponse.json({error:'Project required'},{status:400});
+  const access=await requireProjectAccess(req,body.projectId.trim());
+  if(!access.ok)return NextResponse.json({error:access.error},{status:access.status});
   const apiKey=process.env.ELEVENLABS_API_KEY;
   if(!apiKey)return NextResponse.json({error:'ElevenLabs voice is not configured.'},{status:503});
-  const body=await req.json().catch(()=>null) as null|{text?:string};
   const text=body?.text?.trim();
   if(!text)return NextResponse.json({error:'Text required'},{status:400});
   if(text.length>3000)return NextResponse.json({error:'Text is too long for speech.'},{status:413});
