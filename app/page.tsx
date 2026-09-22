@@ -1,2 +1,2 @@
-import ReforgeApp from '@/components/ReforgeApp';
-export default function Home() { return <ReforgeApp />; }
+import RpgForge from '@/components/RpgForge';
+export default function Page(){return <RpgForge/>}
