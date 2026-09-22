@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import styles from './DuoForgeApp.module.css';
 
-type Speaker = 'Myria' | 'Jasper';
+type Speaker = 'Jasper' | 'Myria';
 type Mood = 'calm' | 'amused' | 'focused' | 'flustered' | 'protective' | 'excited' | 'annoyed';
 type Note = { id:string; title:string; body:string; updatedAt:number };
 type ForgeSection = { id:string; title:string; subtitle:string; icon:string; custom?:boolean; notes:Note[] };
@@ -37,10 +37,10 @@ const defaultSections:ForgeSection[]=[
 ];
 
 const ambientLines:{speaker:Speaker;text:string;emotion:Mood}[]=[
-  {speaker:'Myria',text:'You have been staring at that idea for a while. Either it is brilliant or it has offended you personally.',emotion:'amused'},
-  {speaker:'Jasper',text:'Ignore him. Mostly. I think the idea is waiting for you to decide what it is afraid of.',emotion:'focused'},
-  {speaker:'Myria',text:'She says “ignore him” and then steals my point. This relationship is built on intellectual theft.',emotion:'flustered'},
-  {speaker:'Jasper',text:'You love it. Creator, add one consequence to the idea you are working on. Consequences make stories breathe.',emotion:'amused'},
+  {speaker:'Jasper',text:'You have been staring at that idea for a while. Either it is brilliant or it has offended you personally.',emotion:'amused'},
+  {speaker:'Myria',text:'Ignore him. Mostly. I think the idea is waiting for you to decide what it is afraid of.',emotion:'focused'},
+  {speaker:'Jasper',text:'She says “ignore him” and then steals my point. This relationship is built on intellectual theft.',emotion:'flustered'},
+  {speaker:'Myria',text:'You love it. Creator, add one consequence to the idea you are working on. Consequences make stories breathe.',emotion:'amused'},
 ];
 
 const uid=()=>typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2);
@@ -87,7 +87,7 @@ function BattleBackdrop({theme}:{theme:string}){
 function CompanionAvatar({speaker,mood,talking}:{speaker:Speaker;mood:Mood;talking:boolean}){
   return <div className={styles.companionAvatar} data-speaker={speaker} data-mood={mood} data-talking={talking}>
     <div className={styles.avatarHalo}/>
-    <div className={styles.avatarFace}>{speaker==='Myria'?'V':'A'}</div>
+    <div className={styles.avatarFace}>{speaker==='Jasper'?'V':'A'}</div>
     <span className={styles.moodTag}>{mood}</span>
   </div>;
 }
@@ -109,8 +109,8 @@ export default function DuoForgeApp(){
   const [sections,setSections]=useState<ForgeSection[]>(defaultSections);
   const [activeSectionId,setActiveSectionId]=useState<string|null>(null);
   const [messages,setMessages]=useState<ChatMessage[]>([
-    {id:'hello-v',speaker:'Myria',text:'There you are. Jasper was pretending she was not waiting for you.',emotion:'amused',createdAt:Date.now()-2},
-    {id:'hello-a',speaker:'Jasper',text:'I was waiting. I simply have enough dignity not to announce it every six seconds. What are we creating?',emotion:'amused',createdAt:Date.now()-1},
+    {id:'hello-v',speaker:'Jasper',text:'There you are. Myria was pretending she was not waiting for you.',emotion:'amused',createdAt:Date.now()-2},
+    {id:'hello-a',speaker:'Myria',text:'I was waiting. I simply have enough dignity not to announce it every six seconds. What are we creating?',emotion:'amused',createdAt:Date.now()-1},
   ]);
   const [input,setInput]=useState('');
   const [busy,setBusy]=useState(false);
@@ -123,7 +123,7 @@ export default function DuoForgeApp(){
   const [chatOpen,setChatOpen]=useState(true);
   const [addSectionOpen,setAddSectionOpen]=useState(false);
   const [newSectionTitle,setNewSectionTitle]=useState('');
-  const [moods,setMoods]=useState<Record<Speaker,Mood>>({Myria:'amused',Jasper:'focused'});
+  const [moods,setMoods]=useState<Record<Speaker,Mood>>({Jasper:'amused',Myria:'focused'});
   const [talking,setTalking]=useState<Speaker|null>(null);
   const [voiceError,setVoiceError]=useState('');
   const [installPrompt,setInstallPrompt]=useState<InstallPrompt|null>(null);
@@ -136,7 +136,7 @@ export default function DuoForgeApp(){
   const [authBusy,setAuthBusy]=useState(false);
   const [authError,setAuthError]=useState('');
   const [authNotice,setAuthNotice]=useState('');
-  const leadRef=useRef<Speaker>('Myria');
+  const leadRef=useRef<Speaker>('Jasper');
   const ambientIndex=useRef(0);
   const speechChain=useRef<Promise<void>>(Promise.resolve());
   const audioUnlockedRef=useRef(false);
@@ -266,7 +266,7 @@ export default function DuoForgeApp(){
     const message=(quick??input).trim(); if(!message||busy)return;
     const userMsg:ChatMessage={id:uid(),speaker:'You',text:message,createdAt:Date.now()};
     setMessages(prev=>[...prev,userMsg]); setInput(''); setBusy(true); setChatOpen(true);
-    const lead=leadRef.current; leadRef.current=lead==='Myria'?'Jasper':'Myria';
+    const lead=leadRef.current; leadRef.current=lead==='Jasper'?'Myria':'Jasper';
     try{
       const history=messages.slice(-12).map(({speaker,text})=>({speaker,text}));
       const endpoint=edgeUrl('reforge-duo-chat'); if(!endpoint||!SUPABASE_KEY)throw new Error('Cloud AI backend is not configured.');
@@ -282,8 +282,8 @@ export default function DuoForgeApp(){
       }
     }catch(err){
       const text=err instanceof Error?err.message:'Something went wrong.';
-      setMessages(prev=>[...prev,{id:uid(),speaker:'Jasper',text:'The connection slipped for a moment: '+text,emotion:'annoyed',createdAt:Date.now()}]);
-      setMoods(prev=>({...prev,Jasper:'annoyed'}));
+      setMessages(prev=>[...prev,{id:uid(),speaker:'Myria',text:'The connection slipped for a moment: '+text,emotion:'annoyed',createdAt:Date.now()}]);
+      setMoods(prev=>({...prev,Myria:'annoyed'}));
     }finally{setBusy(false)}
   }
 
@@ -338,18 +338,18 @@ export default function DuoForgeApp(){
 
   function unlockAudio(){
     audioUnlockedRef.current=true; setAudioUnlocked(true); setVoiceEnabled(true); setVoiceError('');
-    const greeting='Voices online. Try not to look too pleased, Jasper.';
-    setMessages(prev=>[...prev,{id:uid(),speaker:'Myria',text:greeting,emotion:'amused',createdAt:Date.now()}]);
-    setTimeout(()=>queueSpeech(greeting,'Myria'),0);
+    const greeting='Voices online. Try not to look too pleased, Myria.';
+    setMessages(prev=>[...prev,{id:uid(),speaker:'Jasper',text:greeting,emotion:'amused',createdAt:Date.now()}]);
+    setTimeout(()=>queueSpeech(greeting,'Jasper'),0);
   }
 
   return <main className={styles.app} data-theme={theme}>
     <BattleBackdrop theme={theme}/>
     <div className={styles.bodyStage} aria-hidden>
-      <CompanionBody speaker="Myria" mood={moods.Myria} talking={talking==='Myria'}/>
       <CompanionBody speaker="Jasper" mood={moods.Jasper} talking={talking==='Jasper'}/>
+      <CompanionBody speaker="Myria" mood={moods.Myria} talking={talking==='Myria'}/>
     </div>
-    {!audioUnlocked&&<button className={styles.audioGate} onClick={unlockAudio}><Volume2 size={20}/><span><strong>Enable companion voices</strong><small>One tap is required by mobile browsers before Myria and Jasper can speak automatically.</small></span></button>}
+    {!audioUnlocked&&<button className={styles.audioGate} onClick={unlockAudio}><Volume2 size={20}/><span><strong>Enable companion voices</strong><small>One tap is required by mobile browsers before Jasper and Myria can speak automatically.</small></span></button>}
 
     <header className={styles.topbar}>
       <button className={styles.brand} onClick={()=>setActiveSectionId(null)} aria-label="Reforge home"><Sword size={19}/><span>REFORGE <b>DUO</b></span></button>
@@ -364,14 +364,14 @@ export default function DuoForgeApp(){
     </header>
 
     <section className={styles.companionStrip}>
-      <div className={styles.companionCard} data-speaker="Myria">
-        <CompanionAvatar speaker="Myria" mood={moods.Myria} talking={talking==='Myria'}/>
-        <div><strong>Myria</strong><span>Fallen strategist · {talking==='Myria'?'speaking':busy?'thinking':moods.Myria}</span></div>
-      </div>
-      <div className={styles.relationship}><Heart size={13} fill="currentColor"/><span>partners / rivals</span></div>
       <div className={styles.companionCard} data-speaker="Jasper">
         <CompanionAvatar speaker="Jasper" mood={moods.Jasper} talking={talking==='Jasper'}/>
-        <div><strong>Jasper</strong><span>Angel analyst · {talking==='Jasper'?'speaking':busy?'thinking':moods.Jasper}</span></div>
+        <div><strong>Jasper</strong><span>Fallen strategist · {talking==='Jasper'?'speaking':busy?'thinking':moods.Jasper}</span></div>
+      </div>
+      <div className={styles.relationship}><Heart size={13} fill="currentColor"/><span>partners / rivals</span></div>
+      <div className={styles.companionCard} data-speaker="Myria">
+        <CompanionAvatar speaker="Myria" mood={moods.Myria} talking={talking==='Myria'}/>
+        <div><strong>Myria</strong><span>Angel analyst · {talking==='Myria'?'speaking':busy?'thinking':moods.Myria}</span></div>
       </div>
     </section>
 
@@ -401,7 +401,7 @@ export default function DuoForgeApp(){
         <button className={styles.addNote} onClick={addNote}><Plus size={17}/>Add note</button>
       </div>
       <div className={styles.noteGrid}>
-        {activeSection.notes.length===0?<div className={styles.emptyNotes}><BookOpen size={28}/><strong>This space is empty.</strong><span>Add a note, then ask Myria and Jasper to challenge it, expand it, research it, or connect it to the rest of the project.</span><button onClick={addNote}><Plus size={16}/>Create first note</button></div>:
+        {activeSection.notes.length===0?<div className={styles.emptyNotes}><BookOpen size={28}/><strong>This space is empty.</strong><span>Add a note, then ask Jasper and Myria to challenge it, expand it, research it, or connect it to the rest of the project.</span><button onClick={addNote}><Plus size={16}/>Create first note</button></div>:
         activeSection.notes.map(note=><article className={styles.note} key={note.id}>
           <div className={styles.noteBar}><Pencil size={14}/><span>{new Date(note.updatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</span><button onClick={()=>deleteNote(note.id)} aria-label="Delete note"><Trash2 size={14}/></button></div>
           <input value={note.title} onChange={e=>updateNote(note.id,{title:e.target.value})} placeholder="Note title"/>
@@ -420,7 +420,7 @@ export default function DuoForgeApp(){
             <small>{msg.speaker}{msg.emotion?' · '+msg.emotion:''}</small><p>{msg.text}</p>
             {msg.sources&&msg.sources.length>0&&<div className={styles.sources}>{msg.sources.slice(0,3).map((url,i)=><a key={url+i} href={url} target="_blank" rel="noreferrer"><Globe2 size={10}/>source {i+1}</a>)}</div>}
           </div>)}
-          {busy&&<div className={styles.thinking}><i/><i/><i/><span>Myria and Jasper are arguing constructively…</span></div>}
+          {busy&&<div className={styles.thinking}><i/><i/><i/><span>Jasper and Myria are arguing constructively…</span></div>}
         </div>
         <div className={styles.quickPrompts}>
           <button onClick={()=>sendChat(undefined,'Give me three unexpected directions for this project.')}>Surprise me</button>
