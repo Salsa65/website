@@ -16,7 +16,7 @@ export default function InviteJoin({token}:{token:string}){
     if(!supabase)throw new Error('Cloud access is not configured.');
     const {data,error}=await supabase.rpc('accept_collaboration_invite',{p_token:token});
     if(error)throw error;
-    window.localStorage.removeItem('reforge-pending-invite');
+    window.localStorage.removeItem('redbound-pending-invite');
     const base=process.env.NEXT_PUBLIC_BASE_PATH||''; window.location.replace(data?(base+'/?project='+encodeURIComponent(String(data))):(base+'/'));
   }
 
@@ -25,7 +25,7 @@ export default function InviteJoin({token}:{token:string}){
     void (async()=>{
       const {data,error}=await supabase.rpc('preview_collaboration_invite',{p_token:token});
       if(error||!data?.length){setError('This private invite is invalid, expired, revoked, or already used.');setChecking(false);return;}
-      setPreview(data[0] as InvitePreview); window.localStorage.setItem('reforge-pending-invite',token);
+      setPreview(data[0] as InvitePreview); window.localStorage.setItem('redbound-pending-invite',token);
       const {data:{session}}=await supabase.auth.getSession();
       if(session){try{await claim();return;}catch(err){setError(err instanceof Error?err.message:'Could not apply invite.');}}
       setChecking(false);
