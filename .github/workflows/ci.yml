@@ -1,4 +1,4 @@
-name: Reforge CI
+name: Redbound Studio CI
 on:
   push:
     branches: [main]
