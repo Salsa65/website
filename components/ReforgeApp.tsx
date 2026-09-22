@@ -22,6 +22,14 @@ type LiveConversationLike={
   setMicMuted:(muted:boolean)=>Promise<void>|void;
   sendContextualUpdate:(text:string)=>void;
 };
+function liveEventText(event:unknown){
+  if(typeof event==='string')return event.trim();
+  if(!event||typeof event!=='object')return '';
+  const value=(event as {message?:unknown;text?:unknown;transcript?:unknown}).message
+    ??(event as {text?:unknown}).text
+    ??(event as {transcript?:unknown}).transcript;
+  return typeof value==='string'?value.trim():'';
+}
 const MYRIA_WELCOME="I'm Myria, your Redbound brainstorming partner. I can help shape ideas, characters, worlds, outlines, scenes, drafts, and continuity. Enable Speak Replies for narrated answers, or start a Live Call to brainstorm with me out loud.";
 const BASE_PATH=process.env.NEXT_PUBLIC_BASE_PATH||'';
 const AI_ENDPOINT=`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/reforge-ai`;
@@ -319,6 +327,16 @@ export default function RedboundApp(){
     const {error}=await supabase.from('myria_conversations').insert({project_id:activeProjectId,user_id:user.id,role,content});
     if(error)console.warn('Myria conversation persistence failed:',error.message);
   }
+  function appendLiveTranscript(role:'user'|'assistant',content:string){
+    const text=content.trim();if(!text)return;
+    setMessages(current=>{
+      const last=current[current.length-1];
+      if(last?.role===role&&last.content===text)return current;
+      return [...current,{id:uid(),role,content:text,createdAt:Date.now()}];
+    });
+    void persistConversation(role,text);
+  }
+
   async function sendMyria(e?:FormEvent,override?:string){e?.preventDefault();const text=(override??chat).trim();if(!text)return;stopSpeech();const userMsg:MyriaMessage={id:uid(),role:'user',content:text,createdAt:Date.now()};const next=[...messages,userMsg];setMessages(next);setChat('');setMyriaStatus('thinking');void persistConversation('user',text);
     try{if(!supabase)throw new Error('Private project authentication is required.');const {data:{session}}=await supabase.auth.getSession();const auth=session?.access_token;if(!auth||!activeProjectId)throw new Error('Private project authentication is required.');const res=await fetch(AI_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`,'apikey':SUPABASE_PUBLIC_KEY},body:JSON.stringify({action:'myria',projectId:activeProjectId,message:text,context:projectContext(),history:next.slice(-20).map(m=>({role:m.role,content:m.content}))})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Myria is unavailable.');const a:MyriaMessage={id:uid(),role:'assistant',content:data.message,createdAt:Date.now()};setMessages(v=>[...v,a]);void persistConversation('assistant',data.message);if(data.suggestion)await persistGoal(data.suggestion);setMyriaStatus('idle');if(voiceEnabled&&!muted)queueSpeech(data.message);}catch(err){setMyriaStatus('error');const m=err instanceof Error?err.message:'Myria is unavailable.';const fallback=`I can't reach my reasoning service right now. ${m}`;setMessages(v=>[...v,{id:uid(),role:'assistant',content:fallback,createdAt:Date.now()}]);void persistConversation('assistant',fallback);}}
   async function ensureAudioContext(){
@@ -465,7 +483,7 @@ export default function RedboundApp(){
   async function startLiveCall(){
     if(liveCallStatus==='connecting'||liveCallStatus==='connected')return;
     if(mode!=='account'||!supabase||!user||!activeProjectId){notify('Sign in to a cloud project to start a live Myria call.');return;}
-    setLiveCallStatus('connecting');setLiveMicMuted(false);stopSpeech();
+    setLiveCallStatus('connecting');setLiveMicMuted(false);stopSpeech();setMyriaStatus('observing');
     try{
       if(!navigator.mediaDevices?.getUserMedia)throw new Error('This device does not expose microphone access.');
       const permission=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -475,29 +493,45 @@ export default function RedboundApp(){
       const res=await fetch(AI_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`,'apikey':SUPABASE_PUBLIC_KEY},body:JSON.stringify({action:'live-session',projectId:activeProjectId})});
       const data=await res.json() as {signedUrl?:string;conversationId?:string|null;error?:string};
       if(!res.ok||!data.signedUrl)throw new Error(data.error||'Live voice session could not start.');
+
       const {Conversation}=await import('@elevenlabs/client');
-      const conversation=await Conversation.startSession({
+      const startSession=Conversation.startSession.bind(Conversation) as unknown as (options:Record<string,unknown>)=>Promise<unknown>;
+      const conversation=await startSession({
         signedUrl:data.signedUrl,
         connectionType:'websocket',
         userId:user.id,
-        onDisconnect:()=>{liveConversationRef.current=null;setLiveCallStatus('idle');setLiveMicMuted(false);},
-        onError:error=>{setLiveCallStatus('error');notify(`Live Myria error: ${String(error)}`);},
+        onConnect:()=>{setLiveCallStatus('connected');setMyriaStatus('observing');},
+        onDisconnect:()=>{liveConversationRef.current=null;setLiveCallStatus('idle');setLiveMicMuted(false);setMyriaStatus('idle');},
+        onError:(error:unknown)=>{setLiveCallStatus('error');setMyriaStatus('error');notify(`Live Myria error: ${error instanceof Error?error.message:String(error)}`);},
+        onMessage:(event:unknown)=>{const text=liveEventText(event);if(text){appendLiveTranscript('assistant',text);setMyriaStatus('talking');}},
+        onUserTranscript:(event:unknown)=>{const text=liveEventText(event);if(text){appendLiveTranscript('user',text);setMyriaStatus('thinking');}},
+        onModeChange:(event:unknown)=>{
+          const modeValue=event&&typeof event==='object'&&'mode'in event?String((event as {mode?:unknown}).mode):'';
+          if(modeValue==='speaking')setMyriaStatus('talking');
+          else if(modeValue==='listening')setMyriaStatus('observing');
+        },
         clientTools:{
-          create_note:async({title,content,section_name}:{title:string;content:string;section_name:string})=>saveVoiceNote({title,content,section_name}),
+          create_note:async(input:unknown)=>{
+            const item=(input&&typeof input==='object'?input:{}) as {title?:unknown;content?:unknown;section_name?:unknown};
+            return saveVoiceNote({
+              title:typeof item.title==='string'?item.title:'',
+              content:typeof item.content==='string'?item.content:'',
+              section_name:typeof item.section_name==='string'?item.section_name:'',
+            });
+          },
         },
       });
-      const live=conversation as unknown as LiveConversationLike;
+      const live=conversation as LiveConversationLike;
       liveConversationRef.current=live;
       const context=JSON.stringify(projectContext()).slice(0,24000);
       live.sendContextualUpdate('Private Redbound project context for this conversation: '+context);
-      setLiveConversationId(data.conversationId??'');setLiveCallStatus('connected');
+      setLiveConversationId(data.conversationId??'');setLiveCallStatus('connected');setMyriaStatus('observing');
       notify('Live Myria call connected. Start talking.');
     }catch(err){
-      liveConversationRef.current=null;setLiveCallStatus('error');
+      liveConversationRef.current=null;setLiveCallStatus('error');setMyriaStatus('error');
       notify(err instanceof Error?err.message:'Live Myria call failed to start.');
     }
   }
-
   async function endLiveCall(){
     const live=liveConversationRef.current;liveConversationRef.current=null;
     try{await live?.endSession();}catch{}
@@ -537,9 +571,18 @@ export default function RedboundApp(){
         <div className="notes-grid">{sectionNotes.length?sectionNotes.map(note=><article key={note.id} className="note-card" draggable={editable} onDragStart={e=>{e.dataTransfer.setData('text/reforge-note',note.id);e.dataTransfer.effectAllowed='move'}}><div className="drag"><GripVertical size={16}/></div><input className="note-title" value={note.title} readOnly={!editable} onChange={e=>updateNoteDraft(note.id,{title:e.target.value})}/><textarea className="note-body" value={note.body} readOnly={!editable} onChange={e=>updateNoteDraft(note.id,{body:e.target.value})}/><div className="note-foot"><span>{note.category}</span>{editable&&<button onClick={()=>deleteNote(note.id)}>Delete</button>}</div></article>):<div className="empty"><BookOpen size={34}/><strong>No fragments here yet.</strong><span>Add a note. Redbound routes new notes by their content, not their title.</span></div>}</div>
       </section>
 
-      <aside className="myria glass"><div className="myria-head"><div className={`myria-orb ${myriaStatus}`}><Bot className="myria-fallback" size={24}/><img className="myria-profile-image" src={`${BASE_PATH}/myria-profile.jpg`} alt="Myria" onError={e=>{e.currentTarget.style.display='none'}}/></div><div><p className="eyebrow">PROJECT ASSISTANT</p><h2>MYRIA</h2><span className="status-line">{myriaStatus==='thinking'?'Thinking…':myriaStatus==='talking'?'Speaking…':myriaStatus==='error'?'Text service unavailable':'Observing quietly'}</span></div><div className="myria-controls"><button className={`icon-btn ${voiceAlwaysOn?'voice-live':''}`} onClick={toggleContinuousVoice} title={voiceAlwaysOn?'Stop always-listening mode':'Allow Myria to always listen'} aria-pressed={voiceAlwaysOn}>{voiceAlwaysOn?<Mic size={18}/>:<MicOff size={18}/>}</button><button className="icon-btn" onClick={toggleMute} title={muted?'Unmute Myria':'Mute Myria'}>{muted?<VolumeX size={18}/>:<Volume2 size={18}/>}</button></div></div>
-        <div className="myria-loop" aria-label="Myria work cycle"><span>Plan</span><span>Act</span><span>Review</span><span>Revise</span><span>Self-review</span></div>{voiceSupported&&<div className={`voice-status ${voiceAlwaysOn?'live':''}`}>{voiceAlwaysOn?'Listening continuously':'Microphone ready'}{lastHeard&&<small>Last heard: {lastHeard}</small>}</div>}<div className="chat-log">{messages.map(m=><div key={m.id} className={`bubble ${m.role}`}><small>{m.role==='assistant'?'Myria':'You'}</small><span>{m.content}</span>{m.role==='assistant'&&<button type="button" className="bubble-speak" onClick={()=>queueSpeech(m.content)} title="Speak this reply" aria-label="Speak this reply"><Volume2 size={13}/></button>}</div>)}</div>
-        <form className="chat-form" onSubmit={sendMyria}><input value={chat} onChange={e=>setChat(e.target.value)} onFocus={()=>setMyriaStatus('observing')} onBlur={()=>myriaStatus==='observing'&&setMyriaStatus('idle')} placeholder="Ask Myria about the project…"/><button className="send-btn" aria-label="Send"><Sparkles size={17}/></button></form>
+      <aside className="myria glass"><div className="myria-head"><div className={`myria-orb ${myriaStatus}`}><Bot className="myria-fallback" size={24}/><img className="myria-profile-image" src={`${BASE_PATH}/myria-profile.jpg`} alt="Myria" onError={e=>{e.currentTarget.style.display='none'}}/></div><div><p className="eyebrow">PROJECT ASSISTANT</p><h2>MYRIA</h2><span className="status-line">{liveCallStatus==='connected'?'Live voice connected':liveCallStatus==='connecting'?'Connecting live voice…':myriaStatus==='thinking'?'Thinking…':myriaStatus==='talking'?'Speaking…':myriaStatus==='error'?'Assistant needs attention':'Ready to brainstorm'}</span></div><div className="myria-controls">{liveCallStatus==='connected'?<button className={`icon-btn voice-live`} onClick={()=>void toggleLiveMic()} title={liveMicMuted?'Unmute live microphone':'Mute live microphone'}>{liveMicMuted?<MicOff size={18}/>:<Mic size={18}/>}</button>:<button className="icon-btn" onClick={()=>void startLiveCall()} title="Start live voice conversation"><Mic size={18}/></button>}<button className="icon-btn" onClick={toggleMute} title={muted?'Enable narrated replies':'Mute narrated replies'}>{muted?<VolumeX size={18}/>:<Volume2 size={18}/>}</button></div></div>
+        <div className="myria-loop" aria-label="Myria work cycle"><span>Listen</span><span>Brainstorm</span><span>Build</span><span>Review</span><span>Refine</span></div>
+        <div className={`live-voice-panel ${liveCallStatus}`}>
+          <div className="voice-status-copy"><strong>{liveCallStatus==='connected'?'LIVE CONVERSATION':liveCallStatus==='connecting'?'CONNECTING…':'VOICE READY'}</strong><span>{liveCallStatus==='connected'?'Talk naturally. Myria will listen and answer aloud.':'Wistoria voice · ElevenLabs live agent · secure cloud session'}</span>{liveConversationId&&<small>Session {liveConversationId.slice(0,12)}…</small>}</div>
+          <div className="live-voice-actions">
+            {liveCallStatus==='connected'?<><button type="button" className="primary" onClick={()=>void toggleLiveMic()}>{liveMicMuted?<><Mic size={14}/> Unmute mic</>:<><MicOff size={14}/> Mute mic</>}</button><button type="button" className="ghost" onClick={()=>void endLiveCall()}><X size={14}/> End call</button></>:<button type="button" className="primary" disabled={liveCallStatus==='connecting'||mode!=='account'} onClick={()=>void startLiveCall()}><Mic size={14}/> {liveCallStatus==='connecting'?'Connecting…':'Start Live Call'}</button>}
+            <button type="button" className="ghost" disabled={voiceHealth==='testing'||mode!=='account'} onClick={()=>void enableMyriaVoice()}><Volume2 size={14}/> {voiceHealth==='testing'?'Testing…':'Test Voice'}</button>
+          </div>
+          <div className={`voice-status ${voiceHealth==='ready'||liveCallStatus==='connected'?'live':''}`}><span>Narrated replies: {voiceHealth==='ready'?'cloud voice ready':voiceHealth==='fallback'?'device fallback':voiceHealth==='error'?'needs attention':voiceEnabled?'enabled':'off'}</span><small>Live: Flash v2 · Narration: Flash v2.5</small></div>
+        </div>
+        <div className="chat-log">{messages.map(m=><div key={m.id} className={`bubble ${m.role}`}><small>{m.role==='assistant'?'Myria':'You'}</small><span>{m.content}</span>{m.role==='assistant'&&<button type="button" className="bubble-speak" onClick={()=>void speakOnDemand(m.content)} title="Speak this reply" aria-label="Speak this reply"><Volume2 size={13}/></button>}</div>)}</div>
+        <form className="chat-form" onSubmit={sendMyria}><input value={chat} onChange={e=>setChat(e.target.value)} onFocus={()=>setMyriaStatus('observing')} onBlur={()=>myriaStatus==='observing'&&liveCallStatus!=='connected'&&setMyriaStatus('idle')} placeholder="Ask Myria about the project…"/><button className="send-btn" aria-label="Send"><Sparkles size={17}/></button></form>
         <div className="quick-actions"><button onClick={()=>sendMyria(undefined,'Scan this project and identify the single most useful next creative action.')}><Sparkles size={14}/> Project scan</button><button onClick={()=>sendMyria(undefined,'Summarize the current project from the notes, including unresolved contradictions or gaps.')}><BookOpen size={14}/> Summarize</button></div>
         <div className="goals"><div className="subhead"><strong>Myria goals</strong><span>{goals.length}</span></div>{goals.slice(0,4).map(g=><div className="goal" key={g.id}><span>{g.status}</span><strong>{g.title}</strong><p>{g.reason}</p>{g.tasks.map(task=><div className="goal-task" key={task.id}><div><small>{task.riskLevel} · {task.status} · {task.attempts}/{task.maxAttempts}</small><p>{task.description}</p>{task.verification&&<em>{task.verification}</em>}</div>{!['complete','needs_human_review','waiting_approval'].includes(task.status)&&<button className="mini-run" onClick={()=>void runMyriaTask(g.id,task)}>{task.riskLevel==='low'?'Run':'Request approval'}</button>}</div>)}</div>)}{!goals.length&&<p className="muted-copy">Structured suggestions will appear here when a useful next step is clear.</p>}</div>
       </aside>
