@@ -232,6 +232,24 @@ export default function RedboundApp(){
   async function invite(e:FormEvent){e.preventDefault();if(!supabase||!user||!activeProjectId)return;const email=inviteEmail.trim().toLowerCase()||null;const {data,error}=await supabase.from('collaboration_invites').insert({project_id:activeProjectId,created_by:user.id,email,role:inviteRole}).select('token').single();if(error){notify(error.message);return;}const link=`${window.location.origin}${BASE_PATH}/invite/?token=${encodeURIComponent(data.token)}`;setInviteLink(link);setInviteEmail('');try{await navigator.clipboard.writeText(link);notify('Private invite link created and copied.');}catch{notify('Private invite link created. Copy it from this panel.')}}
 
   const projectContext=()=>({project:activeProject?{title:activeProject.title,description:activeProject.description}:null,sections:projectSections.map(s=>s.title),notes:notes.filter(n=>n.project_id===activeProjectId).slice(0,80).map(n=>({title:n.title,body:n.body,category:n.category})),goals:goals.slice(0,8).map(g=>({title:g.title,status:g.status}))});
+
+  async function saveVoiceNote(input:{title:string;content:string;section_name:string}){
+    const content=input.content.trim();
+    if(!content)return 'Nothing was saved because the note content was empty.';
+    if(mode!=='account'||!supabase||!user||!activeProjectId)return 'Sign in to a cloud project before asking me to save notes.';
+    if(!editable)return 'This project is read-only, so I cannot save a note here.';
+    const requested=input.section_name.trim().toLowerCase();
+    const named=projectSections.find(section=>section.title.toLowerCase()===requested);
+    const targetId=named?.id??inferSection(content,projectSections)??activeSection?.id;
+    const targetSection=projectSections.find(section=>section.id===targetId);
+    if(!targetId||!targetSection)return 'I could not find a project section to save this note into.';
+    const draft={project_id:activeProjectId,author_id:user.id,section_id:targetId,title:input.title.trim()||'Myria brainstorm note',body:content,category:targetSection.title,position:notes.filter(note=>note.section_id===targetId).length};
+    const {data,error}=await supabase.from('notes').insert(draft).select().single();
+    if(error)return `I could not save the note: ${error.message}`;
+    setNotes(current=>[...current,data as Note]);
+    notify(`Myria saved a note to ${targetSection.title}.`);
+    return `Saved "${data.title}" to ${targetSection.title}.`;
+  }
   async function persistGoal(suggestion:{title:string;description:string;reason:string;priority:number;tasks:{description:string;riskLevel:'low'|'medium'|'high'}[]}){
     const goal:MyriaGoal={id:uid(),title:suggestion.title,description:suggestion.description,reason:suggestion.reason,priority:suggestion.priority,status:'planned',tasks:suggestion.tasks.map(t=>({id:uid(),description:t.description,status:'planned',riskLevel:t.riskLevel,attempts:0,maxAttempts:3}))};
     setGoals(v=>[goal,...v]);
@@ -303,8 +321,73 @@ export default function RedboundApp(){
   }
   async function sendMyria(e?:FormEvent,override?:string){e?.preventDefault();const text=(override??chat).trim();if(!text)return;stopSpeech();const userMsg:MyriaMessage={id:uid(),role:'user',content:text,createdAt:Date.now()};const next=[...messages,userMsg];setMessages(next);setChat('');setMyriaStatus('thinking');void persistConversation('user',text);
     try{if(!supabase)throw new Error('Private project authentication is required.');const {data:{session}}=await supabase.auth.getSession();const auth=session?.access_token;if(!auth||!activeProjectId)throw new Error('Private project authentication is required.');const res=await fetch(AI_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`,'apikey':SUPABASE_PUBLIC_KEY},body:JSON.stringify({action:'myria',projectId:activeProjectId,message:text,context:projectContext(),history:next.slice(-20).map(m=>({role:m.role,content:m.content}))})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Myria is unavailable.');const a:MyriaMessage={id:uid(),role:'assistant',content:data.message,createdAt:Date.now()};setMessages(v=>[...v,a]);void persistConversation('assistant',data.message);if(data.suggestion)await persistGoal(data.suggestion);setMyriaStatus('idle');if(voiceEnabled&&!muted)queueSpeech(data.message);}catch(err){setMyriaStatus('error');const m=err instanceof Error?err.message:'Myria is unavailable.';const fallback=`I can't reach my reasoning service right now. ${m}`;setMessages(v=>[...v,{id:uid(),role:'assistant',content:fallback,createdAt:Date.now()}]);void persistConversation('assistant',fallback);}}
-  function stopSpeech(){speechQueue.current=[];voiceAbort.current?.abort();voiceAbort.current=null;if(audioRef.current){audioRef.current.pause();audioRef.current.src='';audioRef.current=null;}speakingRef.current=false;if(myriaStatus==='talking')setMyriaStatus('idle');}
-  function queueSpeech(text:string){speechQueue.current.push(text);void processSpeechQueue()}
+  async function ensureAudioContext(){
+    if(typeof window==='undefined')return null;
+    const w=window as Window&{webkitAudioContext?:typeof AudioContext};
+    const Ctor=window.AudioContext??w.webkitAudioContext;
+    if(!Ctor)return null;
+    let ctx=audioContextRef.current;
+    if(!ctx){ctx=new Ctor();audioContextRef.current=ctx;}
+    if(ctx.state==='suspended')await ctx.resume();
+    return ctx;
+  }
+
+  async function unlockVoiceOutput(){
+    const ctx=await ensureAudioContext();
+    if(!ctx)return;
+    const buffer=ctx.createBuffer(1,1,ctx.sampleRate);
+    const source=ctx.createBufferSource();
+    source.buffer=buffer;source.connect(ctx.destination);source.start(0);
+  }
+
+  function stopSpeech(){
+    speechQueue.current=[];
+    voiceAbort.current?.abort();voiceAbort.current=null;
+    try{activeSourceRef.current?.stop();}catch{}
+    activeSourceRef.current=null;
+    if(audioRef.current){audioRef.current.pause();audioRef.current.src='';audioRef.current=null;}
+    if(typeof window!=='undefined'&&'speechSynthesis'in window)window.speechSynthesis.cancel();
+    speakingRef.current=false;
+    if(myriaStatus==='talking')setMyriaStatus('idle');
+  }
+
+  async function fetchVoiceBlob(action:'voice'|'voice-test',text?:string,signal?:AbortSignal){
+    if(!supabase)throw new Error('Cloud voice is not configured.');
+    const {data:{session}}=await supabase.auth.getSession();
+    const auth=session?.access_token;
+    if(!auth||!activeProjectId)throw new Error('Sign in to a cloud project to use Myria voice.');
+    const res=await fetch(AI_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`,'apikey':SUPABASE_PUBLIC_KEY},body:JSON.stringify({action,text,projectId:activeProjectId}),signal});
+    if(!res.ok){
+      let detail='';
+      try{const data=await res.clone().json() as {error?:string};detail=data.error??'';}catch{}
+      throw new Error(detail||`Voice request failed (${res.status}).`);
+    }
+    const blob=await res.blob();
+    if(!blob.size)throw new Error('Voice service returned empty audio.');
+    return blob;
+  }
+
+  async function playVoiceBlob(blob:Blob){
+    const ctx=await ensureAudioContext();
+    if(ctx){
+      const bytes=await blob.arrayBuffer();
+      const decoded=await ctx.decodeAudioData(bytes.slice(0));
+      await new Promise<void>((resolve)=>{
+        const source=ctx.createBufferSource();
+        source.buffer=decoded;source.connect(ctx.destination);activeSourceRef.current=source;
+        source.onended=()=>{if(activeSourceRef.current===source)activeSourceRef.current=null;resolve();};
+        source.start(0);
+      });
+      return;
+    }
+    const url=URL.createObjectURL(blob);
+    try{
+      const audio=new Audio(url);audio.preload='auto';audioRef.current=audio;
+      await audio.play();
+      await new Promise<void>((resolve,reject)=>{audio.onended=()=>resolve();audio.onerror=()=>reject(new Error('Audio playback failed.'));});
+    }finally{URL.revokeObjectURL(url);audioRef.current=null;}
+  }
+
   async function speakWithDeviceVoice(text:string){
     if(typeof window==='undefined'||!('speechSynthesis'in window))throw new Error('This device does not expose a fallback speech engine.');
     await new Promise<void>((resolve,reject)=>{
@@ -317,41 +400,121 @@ export default function RedboundApp(){
       window.speechSynthesis.speak(utterance);
     });
   }
+
+  async function enableMyriaVoice(){
+    if(voiceHealth==='testing')return;
+    setVoiceHealth('testing');setMuted(false);
+    try{
+      await unlockVoiceOutput();
+      const blob=await fetchVoiceBlob('voice-test');
+      setMyriaStatus('talking');
+      await playVoiceBlob(blob);
+      setVoiceEnabled(true);setVoiceHealth('ready');setMyriaStatus('idle');
+      notify('Myria voice test passed. Spoken replies are enabled.');
+    }catch(err){
+      const reason=err instanceof Error?err.message:'Voice test failed.';
+      try{
+        await speakWithDeviceVoice("Myria's cloud voice could not start, so device speech is enabled as a fallback.");
+        setVoiceEnabled(true);setVoiceHealth('fallback');setMyriaStatus('idle');
+        notify(`Cloud voice fallback enabled: ${reason}`);
+      }catch{
+        setVoiceEnabled(false);setVoiceHealth('error');setMyriaStatus('error');
+        notify(reason);
+      }
+    }
+  }
+
+  function queueSpeech(text:string){
+    if(!voiceEnabled||muted)return;
+    speechQueue.current.push(text);void processSpeechQueue();
+  }
+
+  async function speakOnDemand(text:string){
+    if(!text.trim())return;
+    await unlockVoiceOutput().catch(()=>undefined);
+    if(!voiceEnabled){setVoiceEnabled(true);setMuted(false);}
+    speechQueue.current.push(text);void processSpeechQueue();
+  }
+
   async function processSpeechQueue(){
-    if(speakingRef.current||muted||!speechQueue.current.length)return;
+    if(speakingRef.current||muted||!voiceEnabled||!speechQueue.current.length)return;
     speakingRef.current=true;setMyriaStatus('talking');
     const text=speechQueue.current.shift()!;
     const controller=new AbortController();voiceAbort.current=controller;
-    let objectUrl='';
     try{
-      if(!supabase)throw new Error('Cloud voice is not configured.');
-      const {data:{session}}=await supabase.auth.getSession();
-      const auth=session?.access_token;
-      if(!auth||!activeProjectId)throw new Error('Sign in to use Myria cloud voice.');
-      const res=await fetch(AI_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`,'apikey':SUPABASE_PUBLIC_KEY},body:JSON.stringify({action:'voice',text,projectId:activeProjectId}),signal:controller.signal});
-      if(!res.ok){
-        let detail='';
-        try{const data=await res.clone().json() as {error?:string};detail=data.error??'';}catch{}
-        throw new Error(detail||`Voice request failed (${res.status}).`);
-      }
-      const blob=await res.blob();
-      if(!blob.size)throw new Error('Voice service returned empty audio.');
-      objectUrl=URL.createObjectURL(blob);
-      const audio=new Audio(objectUrl);audio.preload='auto';audioRef.current=audio;
-      await audio.play();
-      await new Promise<void>((resolve,reject)=>{audio.onended=()=>resolve();audio.onerror=()=>reject(new Error('Audio playback failed.'));});
+      const blob=await fetchVoiceBlob('voice',text,controller.signal);
+      await playVoiceBlob(blob);
+      setVoiceHealth('ready');
     }catch(err){
       if(controller.signal.aborted)return;
       const reason=err instanceof Error?err.message:'Voice playback failed.';
-      notify(`Myria voice fallback: ${reason}`);
-      try{await speakWithDeviceVoice(text);}catch(fallbackErr){notify(fallbackErr instanceof Error?fallbackErr.message:'Myria could not speak on this device.');}
+      try{
+        await speakWithDeviceVoice(text);
+        setVoiceHealth('fallback');
+        notify(`Myria used device speech because cloud voice failed: ${reason}`);
+      }catch(fallbackErr){
+        setVoiceHealth('error');
+        notify(fallbackErr instanceof Error?fallbackErr.message:'Myria could not speak on this device.');
+      }
     }finally{
-      if(objectUrl)URL.revokeObjectURL(objectUrl);
-      speakingRef.current=false;audioRef.current=null;voiceAbort.current=null;
-      if(speechQueue.current.length&&!muted)void processSpeechQueue();else setMyriaStatus('idle');
+      speakingRef.current=false;voiceAbort.current=null;
+      if(speechQueue.current.length&&!muted&&voiceEnabled)void processSpeechQueue();else setMyriaStatus('idle');
     }
   }
-  function toggleMute(){const next=!muted;setMuted(next);if(next)stopSpeech();}
+
+  async function startLiveCall(){
+    if(liveCallStatus==='connecting'||liveCallStatus==='connected')return;
+    if(mode!=='account'||!supabase||!user||!activeProjectId){notify('Sign in to a cloud project to start a live Myria call.');return;}
+    setLiveCallStatus('connecting');setLiveMicMuted(false);stopSpeech();
+    try{
+      if(!navigator.mediaDevices?.getUserMedia)throw new Error('This device does not expose microphone access.');
+      const permission=await navigator.mediaDevices.getUserMedia({audio:true});
+      permission.getTracks().forEach(track=>track.stop());
+      const {data:{session}}=await supabase.auth.getSession();
+      const auth=session?.access_token;if(!auth)throw new Error('Your session expired. Sign in again.');
+      const res=await fetch(AI_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`,'apikey':SUPABASE_PUBLIC_KEY},body:JSON.stringify({action:'live-session',projectId:activeProjectId})});
+      const data=await res.json() as {signedUrl?:string;conversationId?:string|null;error?:string};
+      if(!res.ok||!data.signedUrl)throw new Error(data.error||'Live voice session could not start.');
+      const {Conversation}=await import('@elevenlabs/client');
+      const conversation=await Conversation.startSession({
+        signedUrl:data.signedUrl,
+        connectionType:'websocket',
+        userId:user.id,
+        onDisconnect:()=>{liveConversationRef.current=null;setLiveCallStatus('idle');setLiveMicMuted(false);},
+        onError:error=>{setLiveCallStatus('error');notify(`Live Myria error: ${String(error)}`);},
+        clientTools:{
+          create_note:async({title,content,section_name}:{title:string;content:string;section_name:string})=>saveVoiceNote({title,content,section_name}),
+        },
+      });
+      const live=conversation as unknown as LiveConversationLike;
+      liveConversationRef.current=live;
+      const context=JSON.stringify(projectContext()).slice(0,24000);
+      live.sendContextualUpdate('Private Redbound project context for this conversation: '+context);
+      setLiveConversationId(data.conversationId??'');setLiveCallStatus('connected');
+      notify('Live Myria call connected. Start talking.');
+    }catch(err){
+      liveConversationRef.current=null;setLiveCallStatus('error');
+      notify(err instanceof Error?err.message:'Live Myria call failed to start.');
+    }
+  }
+
+  async function endLiveCall(){
+    const live=liveConversationRef.current;liveConversationRef.current=null;
+    try{await live?.endSession();}catch{}
+    setLiveCallStatus('idle');setLiveMicMuted(false);setLiveConversationId('');
+  }
+
+  async function toggleLiveMic(){
+    const live=liveConversationRef.current;if(!live)return;
+    const next=!liveMicMuted;
+    try{await live.setMicMuted(next);setLiveMicMuted(next);}catch{notify('Could not change the live microphone state.');}
+  }
+
+  function toggleMute(){
+    const next=!muted;setMuted(next);
+    if(next)stopSpeech();
+    else if(!voiceEnabled)void enableMyriaVoice();
+  }
 
   if(!booted)return <div className="loading"><Petals/><div className="gate-mark">R</div><p>Heating the forge…</p></div>;
   if(!mode)return <AuthGate onGuest={enterGuest} allowGuest/>;
