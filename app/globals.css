@@ -59,3 +59,84 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-2;bac
 @keyframes myriaTalk{50%{transform:scale(1.07);filter:brightness(1.12)}}@keyframes myriaThink{50%{transform:scale(1.04) translateY(-1px);filter:saturate(1.12)}}
 @media(max-width:720px){.sky-angel{opacity:.12}.angel-3,.angel-5,.angel-8,.angel-9{display:none}.sky-rift{opacity:.12}}
 @media(prefers-reduced-motion:reduce){.angel-sky{display:none}}
+
+
+/* ===== Redbound Sakura RPG Author Studio ===== */
+:root{
+  --sakura-ink:#080b12;
+  --sakura-night:#111725;
+  --sakura-rose:#ff9db9;
+  --sakura-deep:#8b2949;
+  --sakura-gold:#f5d88a;
+  --sakura-jade:#80c9b1;
+  --sakura-paper:#fff8f3;
+}
+body{
+  background:
+    radial-gradient(circle at 50% -10%,rgba(255,210,224,.16),transparent 34%),
+    linear-gradient(180deg,#111726 0%,#101927 52%,#071217 100%);
+  color:#fff8f3;
+}
+.shell,.gate,.loading{background:transparent!important;position:relative;z-index:1}
+.sakura-scene{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:-2;background:
+  radial-gradient(circle at 50% 10%,rgba(255,239,209,.14),transparent 18%),
+  linear-gradient(180deg,rgba(20,24,42,.25),rgba(6,17,22,.2))}
+.sakura-canopy{position:absolute;left:-10%;right:-10%;top:-9%;height:34%;filter:blur(1px);opacity:.72;background:
+  radial-gradient(ellipse at 13% 30%,rgba(255,157,185,.72) 0 7%,transparent 8%),
+  radial-gradient(ellipse at 25% 15%,rgba(255,183,202,.58) 0 9%,transparent 10%),
+  radial-gradient(ellipse at 48% 7%,rgba(255,139,177,.52) 0 11%,transparent 12%),
+  radial-gradient(ellipse at 72% 13%,rgba(255,183,202,.6) 0 9%,transparent 10%),
+  radial-gradient(ellipse at 88% 28%,rgba(255,157,185,.68) 0 8%,transparent 9%)}
+.sakura-pond{position:absolute;left:-6%;right:-6%;bottom:-11%;height:38%;border-radius:50% 50% 0 0/28% 28% 0 0;background:
+  linear-gradient(180deg,rgba(106,182,176,.08),rgba(12,66,76,.42)),
+  repeating-linear-gradient(178deg,rgba(255,255,255,.07) 0 1px,transparent 1px 12px);
+  box-shadow:inset 0 24px 70px rgba(255,188,207,.08),0 -30px 100px rgba(117,204,191,.08);
+  transform:perspective(500px) rotateX(58deg);transform-origin:bottom}
+.pond-ring{position:absolute;border:1px solid rgba(255,207,220,.2);border-radius:50%;width:170px;height:34px;left:calc(12% + var(--ring-x,0%));top:calc(18% + var(--ring-y,0%));animation:pondRipple 5.8s ease-out infinite;opacity:0}
+.ring-1{left:14%;top:24%;animation-delay:-.4s}.ring-2{left:34%;top:48%;animation-delay:-1.8s}.ring-3{left:61%;top:29%;animation-delay:-3.2s}.ring-4{left:76%;top:58%;animation-delay:-4.7s}.ring-5{left:50%;top:72%;animation-delay:-2.4s}.ring-6{left:21%;top:70%;animation-delay:-5.2s}.ring-7{left:68%;top:76%;animation-delay:-.9s}
+.sakura-petals{z-index:0!important}
+.sakura-petal{width:12px!important;height:8px!important;border-radius:80% 12% 80% 12%!important;background:linear-gradient(135deg,#fff1f5,#ff9db9)!important;box-shadow:0 0 10px rgba(255,157,185,.2)!important;opacity:.75!important;animation-name:sakuraFall!important}
+@keyframes sakuraFall{0%{transform:translate3d(0,-12vh,0) rotate(0deg);opacity:0}8%{opacity:.78}72%{opacity:.7}100%{transform:translate3d(12vw,108vh,0) rotate(520deg);opacity:.16}}
+@keyframes pondRipple{0%{transform:scale(.25);opacity:0}18%{opacity:.45}100%{transform:scale(2.8);opacity:0}}
+
+.glass,.gate-card,.gate-poster{background:linear-gradient(145deg,rgba(17,23,37,.82),rgba(8,18,24,.72))!important;border-color:rgba(255,194,211,.2)!important;box-shadow:0 18px 50px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.05)!important;backdrop-filter:blur(22px) saturate(125%)}
+.topbar{background:linear-gradient(180deg,rgba(8,12,21,.94),rgba(8,12,21,.72))!important;border-bottom:1px solid rgba(255,191,211,.18)!important}
+.brand strong,.hero h1,.gate-card h1,.gate-poster h1,.content-panel h2,.myria h2{letter-spacing:.04em}
+.eyebrow{color:var(--sakura-gold)!important}
+.primary,.send-btn{background:linear-gradient(135deg,#a33457,#d45c83)!important;color:#fff!important;box-shadow:0 8px 24px rgba(164,52,87,.24)}
+.ghost,.icon-btn,.profile-btn,.section-nav button,.back-main{border-color:rgba(255,190,208,.18)!important;background:rgba(255,255,255,.035)!important;color:#fff8f3!important}
+.section-nav button.active{background:linear-gradient(135deg,rgba(163,52,87,.36),rgba(99,72,138,.24))!important;border-color:rgba(255,198,216,.46)!important}
+.note-card,.goal,.permission-card,.notice{background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.018))!important;border-color:rgba(255,196,214,.14)!important}
+.note-title,.note-body,.chat-form input,.modal input,.modal textarea,.modal select,.project-rail select{background:rgba(5,10,17,.48)!important;border-color:rgba(255,193,211,.16)!important;color:#fff8f3!important}
+.hero-rule{background:linear-gradient(90deg,transparent,var(--sakura-rose),var(--sakura-gold),transparent)!important}
+.myria-orb{box-shadow:0 0 0 1px rgba(255,215,229,.22),0 0 30px rgba(255,121,167,.18)!important}
+.myria-controls{display:flex;align-items:center;gap:8px}
+.voice-live{box-shadow:0 0 0 1px rgba(128,201,177,.45),0 0 22px rgba(128,201,177,.28)!important;background:rgba(79,151,129,.18)!important}
+.myria-loop{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:4px 0 10px}
+.myria-loop span{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;text-align:center;padding:7px 5px;border-radius:999px;border:1px solid rgba(255,193,211,.14);background:rgba(255,255,255,.035);color:#eadfe3}
+.myria-loop span:nth-child(1),.myria-loop span:nth-child(5){color:var(--sakura-gold)}
+.voice-status{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 9px;padding:8px 10px;border:1px solid rgba(255,193,211,.12);border-radius:12px;background:rgba(255,255,255,.025);font-size:.78rem;color:#cabec4}
+.voice-status.live{border-color:rgba(128,201,177,.28);color:#bde4d5}
+.voice-status small{max-width:58%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#9e9298}
+.back-main{display:inline-flex;align-items:center;gap:7px;border:1px solid transparent;border-radius:999px;padding:7px 11px;margin:0 0 12px;cursor:pointer}
+.focus-mode .project-rail,.focus-mode .hero,.focus-mode .section-nav{display:none!important}
+.focus-mode .workspace-grid{grid-template-columns:minmax(0,1fr) minmax(290px,370px)!important;max-width:1500px;margin-inline:auto}
+.focus-mode .content-panel{min-height:calc(100vh - 150px)}
+.focus-mode .main{padding-top:22px}
+
+@media(max-width:900px){
+  .sakura-pond{height:31%;bottom:-7%}
+  .myria-loop{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .focus-mode .workspace-grid{grid-template-columns:1fr!important}
+}
+@media(max-width:640px){
+  .sakura-canopy{height:25%;opacity:.52}
+  .sakura-petal{width:10px!important;height:7px!important}
+  .voice-status{align-items:flex-start;flex-direction:column}
+  .voice-status small{max-width:100%}
+  .myria-loop{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .topbar{backdrop-filter:blur(18px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .sakura-petal,.pond-ring{animation:none!important}
+}
