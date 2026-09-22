@@ -17,7 +17,7 @@ function publishableKey(){
 
 Deno.serve(async(req:Request)=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers:cors})
-  if(req.method==='GET')return json({ok:true,openaiConfigured:!!Deno.env.get('OPENAI_API_KEY'),elevenlabsConfigured:!!Deno.env.get('ELEVENLABS_API_KEY'),model:Deno.env.get('OPENAI_MODEL')||'gpt-5.6-luna',voiceModel:Deno.env.get('ELEVENLABS_MODEL_ID')||'eleven_v4',voiceConfigured:!!(Deno.env.get('ELEVENLABS_VOICE_ID')||'KBiqSCotcD7IzLEkC5z6')})
+  if(req.method==='GET')return json({ok:true,openaiConfigured:!!Deno.env.get('OPENAI_API_KEY'),elevenlabsConfigured:!!Deno.env.get('ELEVENLABS_API_KEY'),model:Deno.env.get('OPENAI_MODEL')||'gpt-5.6-luna',voiceModel:Deno.env.get('ELEVENLABS_MODEL_ID')||'eleven_v3',voiceConfigured:!!(Deno.env.get('ELEVENLABS_VOICE_ID')||'KBiqSCotcD7IzLEkC5z6')})
   if(req.method!=='POST')return json({error:'Method not allowed'},405)
   const auth=req.headers.get('authorization')||''
   const token=auth.startsWith('Bearer ')?auth.slice(7).trim():''
@@ -35,7 +35,7 @@ Deno.serve(async(req:Request)=>{
     const text=body?.text?.trim(); if(!text)return json({error:'Text required'},400); if(text.length>3000)return json({error:'Text is too long for speech.'},413)
     const apiKey=Deno.env.get('ELEVENLABS_API_KEY'); if(!apiKey)return json({error:'ElevenLabs voice is not configured.'},503)
     const voiceId=Deno.env.get('ELEVENLABS_VOICE_ID')||'KBiqSCotcD7IzLEkC5z6'
-    const upstream=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,{method:'POST',headers:{'xi-api-key':apiKey,'content-type':'application/json','accept':'audio/mpeg'},body:JSON.stringify({text,model_id:Deno.env.get('ELEVENLABS_MODEL_ID')||'eleven_v4',language_code:'en',voice_settings:{stability:.48,similarity_boost:.78,style:.28,use_speaker_boost:true,speed:1.0}})})
+    const upstream=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,{method:'POST',headers:{'xi-api-key':apiKey,'content-type':'application/json','accept':'audio/mpeg'},body:JSON.stringify({text,model_id:Deno.env.get('ELEVENLABS_MODEL_ID')||'eleven_v3',language_code:'en',voice_settings:{stability:.48,similarity_boost:.78,style:.28,use_speaker_boost:true,speed:1.0}})})
     if(!upstream.ok)return json({error:'Myria voice is temporarily unavailable.'},502)
     return new Response(upstream.body,{headers:{...cors,'content-type':'audio/mpeg','cache-control':'no-store'}})
   }
