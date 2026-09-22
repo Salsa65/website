@@ -19,6 +19,12 @@ console.log("Installed Redbound light and dark wing launcher icons.");
 
 const manifestPath = resolve("android/app/src/main/AndroidManifest.xml");
 let manifest = readFileSync(manifestPath, "utf8");
+if (!manifest.includes('android.permission.RECORD_AUDIO')) {
+  manifest = manifest.replace(
+    '<application',
+    '<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <application',
+  );
+}
 if (!manifest.includes("redbound-oauth-callback")) {
   const deepLink = `
             <!-- redbound-oauth-callback -->
@@ -31,4 +37,5 @@ if (!manifest.includes("redbound-oauth-callback")) {
   manifest = manifest.replace("</activity>", deepLink + "\n        </activity>");
   writeFileSync(manifestPath, manifest);
 }
-console.log("Configured Redbound OAuth deep link: com.reforge.duo://oauth-callback");
+writeFileSync(manifestPath, manifest);
+console.log("Configured Redbound microphone permission and OAuth deep link: com.reforge.duo://oauth-callback");
