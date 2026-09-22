@@ -1,0 +1,4 @@
+name = "Hazel Novel Studio"
+
+[ai]
+required = true
