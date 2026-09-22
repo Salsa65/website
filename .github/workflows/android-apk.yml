@@ -19,6 +19,7 @@ on:
       - 'scripts/build-mobile.mjs'
       - 'package.json'
       - 'package-lock.json'
+      - 'tsconfig.json'
       - '.github/workflows/android-apk.yml'
 
 permissions:
