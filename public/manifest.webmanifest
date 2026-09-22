@@ -1,14 +1,18 @@
 {
-  "name": "Reforge",
-  "short_name": "Reforge",
+  "name": "Redbound",
+  "short_name": "Redbound",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b090d",
   "theme_color": "#8f1731",
-  "description": "Cinematic story development workspace",
+  "description": "Write, train and evolve with shared RPG progression",
   "icons": [
-    {"src":"./icons/reforge-192.svg","sizes":"192x192","type":"image/svg+xml","purpose":"any"},
-    {"src":"./icons/reforge-512.svg","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}
+    {
+      "src": "./icons/redbound.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ]
 }

@@ -1,3 +1,36 @@
+# Redbound — Write · Train · Evolve
+
+The main route is a local-first RPG writing and workout app. The older Duo workspace remains at `/duo/`.
+
+## Current Redbound features
+
+- Home, Train, Write, Library and Profile navigation.
+- Multiple story projects; editable notes and chapters, custom sections, full-text search, section-specific add buttons, drag-and-drop and recoverable archiving.
+- Automatic local saving with visible errors; migration preserves the earlier dashboard draft and XP.
+- Editable workout history, repeatable templates, personal records, minutes, sets, reps, weight, distance, rest and notes. Corrections preserve original XP.
+- Shared XP with configurable rules, activity-gated daily/custom quests, writing/training/hybrid paths, streaks, achievements, titles, hero crests and alignment choices.
+- Default rules: writing awards 20 XP per new 100-word milestone per entry, capped at 600/day. Existing words cannot earn XP on repeat saves. Training awards 100 XP for 10+ minutes or 20 XP for shorter sessions, capped at 300/day. Quests award separate bonuses once per local calendar day.
+- Versioned offline app caching and bundled Android assets. The website must load successfully online once before offline use.
+- Validated JSON backup export/import. Data is local to each browser/device, with no cloud synchronization in Redbound yet.
+
+## Build and verify
+
+Use Node 22, then `npm ci`. Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`. For GitHub Pages, build with `NEXT_PUBLIC_BASE_PATH=/website`.
+
+## Android
+
+`npm run build:mobile` exports Redbound into `mobile-dist`. Then run `npx cap add android`, `npx cap sync android`, `npm run android:assets`, and `cd android && ./gradlew assembleDebug` (Java 21 and Android SDK required). On subsequent builds skip `cap add`. The package ID remains `com.reforge.duo` to preserve the existing Android app identity; its display name is Redbound.
+
+The **Build Redbound Android APK** GitHub Actions workflow builds the debug APK on main changes and manual runs. Download **Redbound-Android-APK** from a successful run and extract `Redbound-debug.apk`. A debug build is for sideload testing. Store releases require a protected signing key, a release build and version management; signing keys must never be committed. Verify on a physical Android device before distributing a release.
+
+## Delivery status and boundaries
+
+The local-first writing/training implementation and Android project are ready for CI. The website and APK are published through GitHub Actions. Check the latest successful workflow run before installing an APK. Local verification covers TypeScript, lint, unit/DOM interaction tests, the production export, Capacitor synchronization and launcher resource generation. A live browser check could not run because the available browser cannot reach the local preview. No physical-device test has been performed.
+
+No cloud backend is configured for Redbound. Backups move data between devices. This dashboard does not expose an AI assistant; the archived architecture below describes the older Reforge workspace, not cloud/AI features of the new dashboard. RPG HP/MP are fantasy character capacity and never medical or workout-readiness measurements.
+
+---
+
 # Reforge
 
 Reforge is a production-oriented story-development workspace built with Next.js, TypeScript, Supabase/PostgreSQL, OpenAI for Myria's reasoning service, and ElevenLabs for Myria's Wistoria voice.

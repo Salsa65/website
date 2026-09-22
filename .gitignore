@@ -7,3 +7,8 @@ coverage
 .DS_Store
 *.log
 .vercel
+
+out/
+mobile-dist/
+android/
+*.tsbuildinfo

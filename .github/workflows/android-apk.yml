@@ -1,11 +1,17 @@
-name: Build Reforge Duo Android APK
+name: Build Redbound Android APK
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - 'app/duo/**'
+      - 'app/**'
+      - 'lib/**'
+      - 'public/**'
+      - 'components/RpgForge*'
+      - 'components/RpgTools.tsx'
+      - 'scripts/**'
+      - 'next.config.ts'
       - 'components/DuoForgeApp.tsx'
       - 'components/DuoForgeApp.module.css'
       - 'capacitor.config.ts'
@@ -21,7 +27,7 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -47,6 +53,9 @@ jobs:
       - name: Sync web bundle
         run: npx cap sync android
 
+      - name: Install Redbound launcher icon
+        run: npm run android:assets
+
       - name: Build debug APK
         run: |
           chmod +x android/gradlew
@@ -54,10 +63,10 @@ jobs:
           ./gradlew assembleDebug --no-daemon
 
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Reforge-Duo-debug.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Redbound-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Reforge-Duo-Android-APK
-          path: Reforge-Duo-debug.apk
+          name: Redbound-Android-APK
+          path: Redbound-debug.apk
           retention-days: 30

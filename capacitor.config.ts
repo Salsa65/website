@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.reforge.duo',
-  appName: 'Reforge Duo',
+  appName: 'Redbound',
   webDir: 'mobile-dist',
   android: {
     backgroundColor: '#07070a',

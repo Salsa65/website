@@ -16,6 +16,8 @@ export default defineConfig([
   },
   globalIgnores([
     '.next/**',
+    'mobile-dist/**',
+    'android/**',
     'out/**',
     'build/**',
     'next-env.d.ts',
