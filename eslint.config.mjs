@@ -20,6 +20,7 @@ export default defineConfig([
     'android/**',
     'out/**',
     'build/**',
+    'supabase/functions/**',
     'next-env.d.ts',
   ]),
 ]);
