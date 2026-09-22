@@ -39,6 +39,27 @@ jobs:
       - name: Create Android platform
         run: npx cap add android
 
+      - name: Apply Aetherfall light-dark launcher icon
+        run: |
+          python - <<'PY'
+          import base64
+          from pathlib import Path
+          data = base64.b64decode("""/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCABgAGADASIAAhEBAxEB/8QAGwAAAwEBAQEBAAAAAAAAAAAAAwQFBgIBBwD/xAA5EAACAQMDAgQDBQcDBQAAAAABAgMABBEFEiExUQYTQWEicZEUMoGhwRUjQlKx0fAkM/FicoKy4f/EABgBAAMBAQAAAAAAAAAAAAAAAAACAwEE/8QAIREAAgICAQUBAQAAAAAAAAAAAAECESExQQMSIjJRYYH/2gAMAwEAAhEDEQA/AMFFG80ixxqWdjgAetbrRfBMSW6XOo7pHbkRKP8APqfpSXg7S+PtRQPKwygI4A7/AK/St/EtxG3AynVznO/I6/8AyoubcqRRQxbJ9tYQpEpW2jgjBA4XcwP/AHH9AKeFlbSQsdhLbuNzHp6UWNo7i1KxEkA9SuAcdqI20Mq8jd0I9CKSqyxr4QrBY25jTdHjBIPJ5/OkL+SKNlaGGVVQrvIcqOT6nP44H5U9PPJAGRo8qr7lYsFB9jmg3ah4mEkwDFQxXPw8DgCs2qQyu7PneralfR3csSalcEpKwI8xumeOf0pQ3mpKR/rrnLdP3hod1i3u3Mw3TFg5Rhxzzz260JbgyzITGcJywU5OASfWrqKomn5FVb3U4VUi/uN5Gdhcn+tHXxE8KhNTsobuNurBRG/1HX8RQIbgXNy80ihUKkkZxsXOKXl2zrOjhSAcrj04qccPKO3qdOMo+BQudD0/VbV7vQ5SSgzJA4w6fMdvcVl5I3ikaORSrKcEH0pizu7jTryOe2kMc0Z4P6H2qrrAi1O0XUYECOB+9Uenf/O1UcnF09HAo2jeeGo0trV5kiO1D5QIPUDr+n0qxLJslVslUIzyOO1T9LheOweMPjDscAe9UdyNFFMxyV/jIqcVcUUfseB8SN5Sl4zjhQRg/wB/avzssEeBuVeuPUE+ntR9wJ2joecipN0qXqgTIrgHIznA/Cll+BFXsBMskv8AuPIyDnIIyPlnrSsVy5uWt5LvbZsCIy4+MYOSe/PSmp5PK2KxXk5VW6D59q5ubVrpVZdiEYQbH3LtJzj60mlgqYLxZLHceJrpgNiHYFbHptHOKkBBuxuGf+nmq/iiQSeIHeNByqYHcgAfpSM1oTIoTe27rnAxzXTF2lZztZFjIy7QeQvTt1ptXxau6sN0g545HNc3cBiQhF+Ack45ryLAtl79u1bsaLcWAuDvlDYxnmqvhuRTcXFlMvwXCYHsf+DU2QKLdcj4+fw5pzw6PM12DnJO7P0NL1FcGCxNM+sQqx8xeFG48DqTXdqy7WicdD0PIooVZFbbwwY4+dJlGjkJwwYH4jjqKxYSC7HtoRmI4/Skp7eSP4lZWHXGOaZikYBi/KZ47mhXE0cLh53CegHXikmqNjaZLmtEuChmUNySeoFcO4UJaQNmZgEZwCdin1OKaMnnWk89pLGXRSFBYbc9/8AmlfD9l5yGSVwzBs5Bzz7VzvLpFm8ZMlqcUb3hliVftCZjIIBDEHhgOuORz+NT7fUYgxWVNh53e3eiXEMMWoXlnepiddzRTRYBRwc89x+dIybroC7URq5I3KCANw6kg9+vzzXXFYRFvIzql15aBY9pEo69eKSiilEkcUoI3A4HrRGs8uss7xwqx5YEMB+C5ocs7AkqrEsMCVjzinDx2wV0wLbRwF4HOap+EE8zxJbDjGH/wDQ1IY/EQR0/OtB4PhEXiK1Jb4isnH/AINRLVCJNttcH021UvGSPV2yaHcJICdzk4xtBOaBpk4WLO7aGlO4leMfOl9d1uLS7b7QNrs/Csen4D1NRi12oo00yl5ojg3L8b5/DNJC9uhc7WChWH3sYGayzeMpo1je5tHCMSY5F43H19jRI/ENnfTKzXMiN2ljAx8iOKG3s1Vo0moWcd3G8bsVEilWZfTPfv0qfo002n3CWbHzHY4GDwV/mB6Y7Y96biu47hBtJlVxh1jG4fUUrdxpDeQ3ELBkiJ3qRyccdO/vU5pPyiMvjMXcbIGuZBBLNdOxUTSECOMepHJyfnjFSW24EYJ4Hw+/vT9yZrq6urW1DvbIxkEXBJxxn3PNDi0u4YtuhnkCcYiiLH8e1dMdKyD2JpGsnw/dkBxg8ZryRVWMBTlx945459KeLXenFJ305IUzhfPjyW+vWvLnUILl3CWSKnJ3Yyw+ZrQtCNvFLNJ5cUbyu3ACjJzW/wDC2jRaVtub7b9ulBCI3VBtPA98A5rGQi80+MX1jPIkZO3zIz0PY03oV7cXHiOCW4neZ8N8Ttn+E0SdJsEtI+j6OwOkMXPO51wfn/Y1hfEX2rV76JVlh/doIhGZAoU9uTyflWo8I3SX2mRuzcL/ALg9x/hrIXFpJZapeXLYDR7miVzyS3Qj5Zz86hG1/CjyUtRs5JvDMqzxOF02VTCeu+LABwehGcGovk2sSxG52wRyxCVSrsWwcgD7uM8Hjj50z4bu40ubiG8McFpJbmKU9B2zjvSOqTxOI7bz3k8iIRjYwKOwJ+LOex7Zp4rNCP6W5bm9h1V/stzbQzW9sSqRQMuEC7vXjOD703Y6hcXUlsb5kLSQNc7lXG5ASGBHfg9Kg/b86hcXysVSS38kZlUMDsCg4zn0zXen6kJ7y0iLyGQWzWxckdWJ+LJPQZ+fFY44NUsnEAnRrqewuUhETDzJNrbjvJGOnTvTWj28kMGuW124jYp5fm7jsDK3PI9KQGofs2a7RGkknd0Jd8YZlYk556GiwFYbe+nEiwRzoUhikcbjnJOPYdz1qi0LyLrbFfO2Sw3otkEnJba2eu0cE46nPajahcD9nW8FtaJbx3CCSVkGScMQAT2yKU0688h4VUrsBPmBsAnPBAJ6ce9e3EisiRvLKTGpUYZSG+IkZIbpk0woaNrjSpNQ0tpI3jlULIpzgkcgjPqKF4fBOqwlR9zJJ9sV5eKt5ezXU1zHtPxH4ss2B0AprT4/2fo1xfyDa8/7uEHt6n64+hpep60NDZ14S8QHQ74+au+1lGHXt7itlqOoaVqalLqKQwMuUmjAJT+39K+XU5ZalPZ/Cp3R/wApPT5dqJJ8BFrk0GsaVqF7IgtibqKFCFfytjEDkbu5qFDY3s9wYI7QtKucp5fIxjP9K0Fh4za2i8sxKRu3ZIww/Ef2qlaeM9MgR/8ATOjM5bK4JweuSaVNraHai82RNU8NjTdItZRP5t9M+0wqgwAQScepxxUexMq3yFUBcyKQAvqGBwO1ae78R6fcXv2uIvBMoKo2MjB/ocdqTsRpCXEciaqtuVYHLxtn8s0d7+GOKvBn7mVvtMjFFz5jE5UHnJ4riISTt5ccYJP8q1burfSRNIzapHNliR5cTfnnFJiWGJSkN7hD6CPH9KdSQjQpcJJC211i3N/CFHFEktHRQZsJgZwBivyx24fzGuwWzn7hNEa7tlO5vMuG9N/T6f8ANDb4KQ7ErkH0jTkuZBLeSeTZJzJJ6sB/Cvv70PX9UXUbvFunl2kI2Qxj0UdKTur6a64dsIOijpS1Yo5tiSleEf/Z""")
+          densities = {
+              "mipmap-mdpi": 48, "mipmap-hdpi": 72, "mipmap-xhdpi": 96,
+              "mipmap-xxhdpi": 144, "mipmap-xxxhdpi": 192,
+          }
+          from PIL import Image
+          import io
+          src = Image.open(io.BytesIO(data)).convert("RGB")
+          for folder, size in densities.items():
+              out = Path("android/app/src/main/res") / folder
+              out.mkdir(parents=True, exist_ok=True)
+              img = src.resize((size,size), Image.Resampling.LANCZOS)
+              img.save(out/"ic_launcher.png")
+              img.save(out/"ic_launcher_round.png")
+          PY
+
       - name: Enable microphone permissions
         run: |
           python - <<'PY'
