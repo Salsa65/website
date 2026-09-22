@@ -305,7 +305,52 @@ export default function RedboundApp(){
     try{if(!supabase)throw new Error('Private project authentication is required.');const {data:{session}}=await supabase.auth.getSession();const auth=session?.access_token;if(!auth||!activeProjectId)throw new Error('Private project authentication is required.');const res=await fetch(AI_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`,'apikey':SUPABASE_PUBLIC_KEY},body:JSON.stringify({action:'myria',projectId:activeProjectId,message:`${MYRIA_PROCESS}\n\nUSER REQUEST:\n${text}`,workflow:{stages:['plan','act','review','revise','self-review'],repeat:'review-revise-when-needed',stop:'complete'},context:projectContext(),history:next.slice(-16).map(m=>({role:m.role,content:m.content}))})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Myria is unavailable.');const a:MyriaMessage={id:uid(),role:'assistant',content:data.message,createdAt:Date.now()};setMessages(v=>[...v,a]);void persistConversation('assistant',data.message);if(data.suggestion)await persistGoal(data.suggestion);setMyriaStatus('idle');if(!muted)queueSpeech(data.message);}catch(err){setMyriaStatus('error');const m=err instanceof Error?err.message:'Myria is unavailable.';const fallback=`I can't reach my reasoning service right now. ${m}`;setMessages(v=>[...v,{id:uid(),role:'assistant',content:fallback,createdAt:Date.now()}]);void persistConversation('assistant',fallback);}}
   function stopSpeech(){speechQueue.current=[];voiceAbort.current?.abort();voiceAbort.current=null;if(audioRef.current){audioRef.current.pause();audioRef.current.src='';audioRef.current=null;}speakingRef.current=false;if(myriaStatus==='talking')setMyriaStatus('idle');}
   function queueSpeech(text:string){speechQueue.current.push(text);void processSpeechQueue()}
-  async function processSpeechQueue(){if(speakingRef.current||muted||!speechQueue.current.length)return;speakingRef.current=true;setMyriaStatus('talking');const text=speechQueue.current.shift()!;const controller=new AbortController();voiceAbort.current=controller;try{if(!supabase)throw new Error();const {data:{session}}=await supabase.auth.getSession();const auth=session?.access_token;if(!auth||!activeProjectId)throw new Error();const res=await fetch(AI_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`,'apikey':SUPABASE_PUBLIC_KEY},body:JSON.stringify({action:'voice',text,projectId:activeProjectId}),signal:controller.signal});if(!res.ok)throw new Error();const blob=await res.blob();const url=URL.createObjectURL(blob);const audio=new Audio(url);audioRef.current=audio;await audio.play();await new Promise<void>(resolve=>{audio.onended=()=>resolve();audio.onerror=()=>resolve()});URL.revokeObjectURL(url);}catch{}finally{speakingRef.current=false;audioRef.current=null;if(speechQueue.current.length&&!muted)void processSpeechQueue();else setMyriaStatus('idle')}}
+  async function speakWithDeviceVoice(text:string){
+    if(typeof window==='undefined'||!('speechSynthesis'in window))throw new Error('This device does not expose a fallback speech engine.');
+    await new Promise<void>((resolve,reject)=>{
+      window.speechSynthesis.cancel();
+      const utterance=new SpeechSynthesisUtterance(text);
+      utterance.lang='en-GB';utterance.rate=.96;utterance.pitch=1;utterance.volume=1;
+      const voices=window.speechSynthesis.getVoices();
+      utterance.voice=voices.find(v=>v.lang.toLowerCase().startsWith('en-gb'))??voices.find(v=>v.lang.toLowerCase().startsWith('en'))??null;
+      utterance.onend=()=>resolve();utterance.onerror=event=>reject(new Error(event.error||'Device speech failed.'));
+      window.speechSynthesis.speak(utterance);
+    });
+  }
+  async function processSpeechQueue(){
+    if(speakingRef.current||muted||!speechQueue.current.length)return;
+    speakingRef.current=true;setMyriaStatus('talking');
+    const text=speechQueue.current.shift()!;
+    const controller=new AbortController();voiceAbort.current=controller;
+    let objectUrl='';
+    try{
+      if(!supabase)throw new Error('Cloud voice is not configured.');
+      const {data:{session}}=await supabase.auth.getSession();
+      const auth=session?.access_token;
+      if(!auth||!activeProjectId)throw new Error('Sign in to use Myria cloud voice.');
+      const res=await fetch(AI_ENDPOINT,{method:'POST',headers:{'content-type':'application/json','authorization':`Bearer ${auth}`,'apikey':SUPABASE_PUBLIC_KEY},body:JSON.stringify({action:'voice',text,projectId:activeProjectId}),signal:controller.signal});
+      if(!res.ok){
+        let detail='';
+        try{const data=await res.clone().json() as {error?:string};detail=data.error??'';}catch{}
+        throw new Error(detail||`Voice request failed (${res.status}).`);
+      }
+      const blob=await res.blob();
+      if(!blob.size)throw new Error('Voice service returned empty audio.');
+      objectUrl=URL.createObjectURL(blob);
+      const audio=new Audio(objectUrl);audio.preload='auto';audio.playsInline=true;audioRef.current=audio;
+      await audio.play();
+      await new Promise<void>((resolve,reject)=>{audio.onended=()=>resolve();audio.onerror=()=>reject(new Error('Audio playback failed.'));});
+    }catch(err){
+      if(controller.signal.aborted)return;
+      const reason=err instanceof Error?err.message:'Voice playback failed.';
+      notify(`Myria voice fallback: ${reason}`);
+      try{await speakWithDeviceVoice(text);}catch(fallbackErr){notify(fallbackErr instanceof Error?fallbackErr.message:'Myria could not speak on this device.');}
+    }finally{
+      if(objectUrl)URL.revokeObjectURL(objectUrl);
+      speakingRef.current=false;audioRef.current=null;voiceAbort.current=null;
+      if(speechQueue.current.length&&!muted)void processSpeechQueue();else setMyriaStatus('idle');
+    }
+  }
   function toggleMute(){const next=!muted;setMuted(next);if(next)stopSpeech();}
 
   if(!booted)return <div className="loading"><Petals/><div className="gate-mark">R</div><p>Heating the forge…</p></div>;
@@ -330,7 +375,7 @@ export default function RedboundApp(){
       </section>
 
       <aside className="myria glass"><div className="myria-head"><div className={`myria-orb ${myriaStatus}`}><Bot className="myria-fallback" size={24}/><img className="myria-profile-image" src={`${BASE_PATH}/myria-profile.jpg`} alt="Myria" onError={e=>{e.currentTarget.style.display='none'}}/></div><div><p className="eyebrow">PROJECT ASSISTANT</p><h2>MYRIA</h2><span className="status-line">{myriaStatus==='thinking'?'Thinking…':myriaStatus==='talking'?'Speaking…':myriaStatus==='error'?'Text service unavailable':'Observing quietly'}</span></div><div className="myria-controls"><button className={`icon-btn ${voiceAlwaysOn?'voice-live':''}`} onClick={toggleContinuousVoice} title={voiceAlwaysOn?'Stop always-listening mode':'Allow Myria to always listen'} aria-pressed={voiceAlwaysOn}>{voiceAlwaysOn?<Mic size={18}/>:<MicOff size={18}/>}</button><button className="icon-btn" onClick={toggleMute} title={muted?'Unmute Myria':'Mute Myria'}>{muted?<VolumeX size={18}/>:<Volume2 size={18}/>}</button></div></div>
-        <div className="myria-loop" aria-label="Myria work cycle"><span>Plan</span><span>Act</span><span>Review</span><span>Revise</span><span>Self-review</span></div>{voiceSupported&&<div className={`voice-status ${voiceAlwaysOn?'live':''}`}>{voiceAlwaysOn?'Listening continuously':'Microphone ready'}{lastHeard&&<small>Last heard: {lastHeard}</small>}</div>}<div className="chat-log">{messages.map(m=><div key={m.id} className={`bubble ${m.role}`}><small>{m.role==='assistant'?'Myria':'You'}</small>{m.content}</div>)}</div>
+        <div className="myria-loop" aria-label="Myria work cycle"><span>Plan</span><span>Act</span><span>Review</span><span>Revise</span><span>Self-review</span></div>{voiceSupported&&<div className={`voice-status ${voiceAlwaysOn?'live':''}`}>{voiceAlwaysOn?'Listening continuously':'Microphone ready'}{lastHeard&&<small>Last heard: {lastHeard}</small>}</div>}<div className="chat-log">{messages.map(m=><div key={m.id} className={`bubble ${m.role}`}><small>{m.role==='assistant'?'Myria':'You'}</small><span>{m.content}</span>{m.role==='assistant'&&<button type="button" className="bubble-speak" onClick={()=>queueSpeech(m.content)} title="Speak this reply" aria-label="Speak this reply"><Volume2 size={13}/></button>}</div>)}</div>
         <form className="chat-form" onSubmit={sendMyria}><input value={chat} onChange={e=>setChat(e.target.value)} onFocus={()=>setMyriaStatus('observing')} onBlur={()=>myriaStatus==='observing'&&setMyriaStatus('idle')} placeholder="Ask Myria about the project…"/><button className="send-btn" aria-label="Send"><Sparkles size={17}/></button></form>
         <div className="quick-actions"><button onClick={()=>sendMyria(undefined,'Scan this project and identify the single most useful next creative action.')}><Sparkles size={14}/> Project scan</button><button onClick={()=>sendMyria(undefined,'Summarize the current project from the notes, including unresolved contradictions or gaps.')}><BookOpen size={14}/> Summarize</button></div>
         <div className="goals"><div className="subhead"><strong>Myria goals</strong><span>{goals.length}</span></div>{goals.slice(0,4).map(g=><div className="goal" key={g.id}><span>{g.status}</span><strong>{g.title}</strong><p>{g.reason}</p>{g.tasks.map(task=><div className="goal-task" key={task.id}><div><small>{task.riskLevel} · {task.status} · {task.attempts}/{task.maxAttempts}</small><p>{task.description}</p>{task.verification&&<em>{task.verification}</em>}</div>{!['complete','needs_human_review','waiting_approval'].includes(task.status)&&<button className="mini-run" onClick={()=>void runMyriaTask(g.id,task)}>{task.riskLevel==='low'?'Run':'Request approval'}</button>}</div>)}</div>)}{!goals.length&&<p className="muted-copy">Structured suggestions will appear here when a useful next step is clear.</p>}</div>
