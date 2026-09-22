@@ -1,11 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.hazel.novelstudio',
-  appName: 'Hazel Novel Studio',
+  appId: 'com.aetherfall.novelstudio',
+  appName: 'Aetherfall',
   webDir: 'mobile-dist',
   android: {
-    backgroundColor: '#070608',
+    backgroundColor: '#111014',
     allowMixedContent: false,
   },
   server: {
