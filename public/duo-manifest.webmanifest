@@ -1,7 +1,7 @@
 {
   "name": "Reforge Duo — AI Story Forge",
   "short_name": "Reforge Duo",
-  "description": "Brainstorm, write, research, and build worlds with Vesper and Arden.",
+  "description": "Brainstorm, write, research, and build worlds with Myria and Jasper.",
   "start_url": "./duo/",
   "scope": "./",
   "display": "standalone",
