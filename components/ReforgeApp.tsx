@@ -3,6 +3,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, BookOpen, Bot, ChevronDown, CircleUserRound, Cloud, CloudOff, GripVertical, LogIn, Mic, MicOff, Plus, Save, Sparkles, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { addGuestGoal, loadGuestState, newGuestProject, saveGuestState, upsertGuestNote } from '@/lib/guestStore';
 import { canEdit, inferSection, slugify } from '@/lib/story';
 import type { AuthMode, GuestState, MyriaGoal, MyriaMessage, MyriaTask, Note, Profile, Project, Role, Section } from '@/lib/types';
@@ -10,6 +13,7 @@ import type { User } from '@supabase/supabase-js';
 
 const uid=()=>crypto.randomUUID();
 type AuthTab='signin'|'signup';
+type OAuthProvider='google'|'github';
 type MyriaStatus='idle'|'observing'|'thinking'|'talking'|'error';
 type SpeechResultLike={isFinal:boolean;0:{transcript:string}};
 type SpeechEventLike={results:ArrayLike<SpeechResultLike>};
@@ -21,6 +25,7 @@ function speechCtor():SpeechRecognitionCtor|null{if(typeof window==='undefined')
 const BASE_PATH=process.env.NEXT_PUBLIC_BASE_PATH||'';
 const AI_ENDPOINT=`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/reforge-ai`;
 const SUPABASE_PUBLIC_KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||'';
+const MOBILE_OAUTH_REDIRECT='com.reforge.duo://oauth-callback';
 
 function Petals(){return <div className="sakura-scene" aria-hidden><div className="sakura-canopy"/><div className="sakura-pond">{Array.from({length:7},(_,i)=><span key={i} className={"pond-ring ring-"+(i+1)}/>)}</div><div className="petals sakura-petals">{Array.from({length:34},(_,i)=><i key={i} className="sakura-petal" style={{left:`${(i*17+7)%100}%`,animationDelay:`-${(i*2.7)%18}s`,animationDuration:`${10+(i%8)*1.8}s`}} />)}</div></div>}
 
@@ -35,30 +40,101 @@ function AscensionMark({compact=false}:{compact?:boolean}){return <div className
 
 function AuthGate({onGuest,allowGuest=false}:{onGuest:()=>void;allowGuest?:boolean}){
   const [tab,setTab]=useState<AuthTab>('signin');
-  const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [displayName,setDisplayName]=useState('');
+  const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [confirmPassword,setConfirmPassword]=useState(''); const [displayName,setDisplayName]=useState('');
   const [busy,setBusy]=useState(false); const [error,setError]=useState(''); const [message,setMessage]=useState('');
-  async function submit(e:FormEvent){e.preventDefault();setError('');setMessage('');if(!supabase){setError('Cloud authentication is not configured on this deployment.');return;}setBusy(true);
+
+  async function finishMobileOAuth(url:string){
+    if(!supabase)return;
+    const parsed=new URL(url);
+    const hash=new URLSearchParams(parsed.hash.replace(/^#/,''));
+    const accessToken=hash.get('access_token');
+    const refreshToken=hash.get('refresh_token');
+    const code=parsed.searchParams.get('code');
+    if(accessToken&&refreshToken){
+      const {error}=await supabase.auth.setSession({access_token:accessToken,refresh_token:refreshToken});
+      if(error)throw error;
+      return;
+    }
+    if(code){
+      const {error}=await supabase.auth.exchangeCodeForSession(code);
+      if(error)throw error;
+    }
+  }
+
+  useEffect(()=>{
+    if(!Capacitor.isNativePlatform())return;
+    let active=true;
+    let handle:{remove:()=>Promise<void>}|undefined;
+    void App.addListener('appUrlOpen',async({url})=>{
+      if(!active||!url.startsWith(MOBILE_OAUTH_REDIRECT))return;
+      try{
+        await Browser.close();
+        await finishMobileOAuth(url);
+      }catch(err){setError(err instanceof Error?err.message:'OAuth sign-in failed.');}
+      finally{setBusy(false);}
+    }).then(listener=>{handle=listener});
+    return()=>{active=false;void handle?.remove();};
+  },[]);
+
+  async function oauth(provider:OAuthProvider){
+    setError('');setMessage('');
+    if(!supabase){setError('Cloud authentication is not configured on this deployment.');return;}
+    setBusy(true);
+    try{
+      if(Capacitor.isNativePlatform()){
+        const {data,error}=await supabase.auth.signInWithOAuth({provider,options:{redirectTo:MOBILE_OAUTH_REDIRECT,skipBrowserRedirect:true}});
+        if(error)throw error;
+        if(!data.url)throw new Error('OAuth provider did not return a sign-in URL.');
+        await Browser.open({url:data.url,presentationStyle:'popover'});
+      }else{
+        const redirectTo=`${window.location.origin}${BASE_PATH}/`;
+        const {error}=await supabase.auth.signInWithOAuth({provider,options:{redirectTo}});
+        if(error)throw error;
+      }
+    }catch(err){setError(err instanceof Error?err.message:'OAuth sign-in failed.');setBusy(false);}
+  }
+
+  async function submit(e:FormEvent){
+    e.preventDefault();setError('');setMessage('');
+    if(!supabase){setError('Cloud authentication is not configured on this deployment.');return;}
+    if(tab==='signup'&&password!==confirmPassword){setError('Passwords do not match.');return;}
+    setBusy(true);
     try{
       if(tab==='signup'){
-        const {data,error}=await supabase.auth.signUp({email,password,options:{data:{display_name:displayName||'Creator'}}}); if(error)throw error;
-        if(!data.session)setMessage('Account created. Check your email if confirmation is enabled, then sign in.');
-      } else {
-        const {error}=await supabase.auth.signInWithPassword({email,password}); if(error)throw error;
+        const {data,error}=await supabase.auth.signUp({email,password,options:{data:{display_name:displayName||'Creator'}}});
+        if(error)throw error;
+        if(!data.session){
+          setError('Redbound is configured for password accounts only, but Supabase is still requiring email confirmation. Turn off Confirm email in Supabase Auth so new accounts sign in immediately without codes or magic links.');
+          return;
+        }
+        setMessage('Account created and signed in.');
+      }else{
+        const {error}=await supabase.auth.signInWithPassword({email,password});
+        if(error)throw error;
       }
-    }catch(err){setError(err instanceof Error?err.message:'Authentication failed.')}finally{setBusy(false)}
+    }catch(err){setError(err instanceof Error?err.message:'Authentication failed.')}
+    finally{setBusy(false);}
   }
+
   return <main className="gate ascension-gate"><Petals/><AngelSky/><section className="gate-poster" aria-label="Redbound Ascension poster"><AscensionMark/><div className="poster-copy"><p className="eyebrow">ANGELS FALL · STORIES RISE</p><h1>REDBOUND</h1><p>FROM CHAOS, CREATION.</p></div></section><section className="gate-card">
-    <AscensionMark compact/><p className="eyebrow">PUBLIC STORY FORGE</p><h1>REDBOUND</h1><p className="gate-copy">Enter Redbound as a guest for local writing, or sign in so your projects, AI conversations, and memory can travel between the website and Android app.</p>
-    <div className="auth-tabs"><button onClick={()=>setTab('signin')} className={tab==='signin'?'active':''}>Sign In</button><button onClick={()=>setTab('signup')} className={tab==='signup'?'active':''}>Create Account</button></div>
+    <AscensionMark compact/><p className="eyebrow">ACCOUNT PORTAL</p><h1>REDBOUND</h1><p className="gate-copy">Use Google or GitHub OAuth, or create a Redbound account with your email and password. No one-time-code or magic-link sign-in is used.</p>
+    <div className="auth-tabs"><button type="button" onClick={()=>setTab('signin')} className={tab==='signin'?'active':''}>Sign In</button><button type="button" onClick={()=>setTab('signup')} className={tab==='signup'?'active':''}>Create Account</button></div>
+    <div className="oauth-grid">
+      <button type="button" className="oauth-btn google" disabled={busy} onClick={()=>void oauth('google')}><span>G</span>{tab==='signup'?'Sign up':'Continue'} with Google</button>
+      <button type="button" className="oauth-btn github" disabled={busy} onClick={()=>void oauth('github')}><span>⌘</span>{tab==='signup'?'Sign up':'Continue'} with GitHub</button>
+    </div>
+    <div className="or"><span/>or use email + password<span/></div>
     <form className="auth-form" onSubmit={submit}>
       {tab==='signup'&&<label>Display name<input value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" /></label>}
       <label>Email<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" /></label>
-      <label>Password<input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={tab==='signup'?'new-password':'current-password'} /></label>
+      <label>{tab==='signup'?'Create password':'Password'}<input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={tab==='signup'?'new-password':'current-password'} /></label>
+      {tab==='signup'&&<label>Confirm password<input type="password" required minLength={8} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} autoComplete="new-password" /></label>}
       {error&&<p className="form-error">{error}</p>}{message&&<p className="form-ok">{message}</p>}
       <button className="primary wide" disabled={busy}>{busy?'Working…':tab==='signup'?'Create Account':'Sign In'}</button>
     </form>
-    {allowGuest&&<><div className="or"><span/>or<span/></div><button className="ghost wide" onClick={onGuest}>Continue as Guest</button></>}
-    <p className="gate-foot">Redbound is publicly accessible. Guest work stays on this device. Signed-in project memory can sync between the website and Android app through the configured cloud backend.</p>
+    <p className="auth-policy">Password accounts use email + password only. OAuth uses the selected provider. Redbound does not offer email OTP or magic-link login.</p>
+    {allowGuest&&<><div className="or"><span/>or<span/></div><button className="ghost wide" type="button" onClick={onGuest}>Continue as Guest</button></>}
+    <p className="gate-foot">Sign into the same account on web and Android to keep projects and AI memory synchronized.</p>
   </section></main>
 }
 
