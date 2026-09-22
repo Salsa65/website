@@ -64,3 +64,25 @@
 @media(max-width:760px){.bodyStage{inset:58px 0 auto;height:370px;padding:0;opacity:.28;align-items:flex-start}.bodyAvatar{width:180px;height:350px;margin-top:8px}.bodyAvatar:first-child{margin-left:-55px}.bodyAvatar:last-child{margin-right:-55px}.bodyAvatar figcaption{display:none}.cloudPill span{display:none}.cloudPill{width:38px;padding:0;justify-content:center}}
 @media(max-width:430px){.bodyStage{height:320px}.bodyAvatar{width:160px;height:310px}.bodyAvatar:first-child{margin-left:-64px}.bodyAvatar:last-child{margin-right:-64px}}
 @media(prefers-reduced-motion:reduce){.bodyAvatar,.bodyWings,.bodyWingLeft,.bodyWingRight,.bodyCore,.bodyHalo,.bodyEyes,.bodyMouth,.bodyAura{animation:none!important}}
+
+
+/* Myria + Jasper lively 2D image rigs */
+.liveRig{position:relative;width:100%;height:100%;display:grid;place-items:end center;transform-origin:50% 100%;animation:rigBreath 3.8s ease-in-out infinite}
+.rigImage{position:relative;z-index:2;width:100%;height:100%;object-fit:contain;object-position:center bottom;user-select:none;-webkit-user-drag:none;filter:drop-shadow(0 20px 28px rgba(0,0,0,.48));animation:rigFloat 5.2s ease-in-out infinite}
+.bodyAvatar[data-speaker="Jasper"] .rigImage{animation-delay:-2.6s}
+.rigAura{position:absolute;z-index:1;inset:12% 4% 6%;border-radius:48%;background:radial-gradient(circle at 50% 42%,rgba(216,230,255,.16),transparent 58%);filter:blur(10px);animation:rigAura 3s ease-in-out infinite}
+.bodyAvatar[data-speaker="Jasper"] .rigAura{background:radial-gradient(circle at 50% 42%,rgba(43,219,206,.14),rgba(197,37,71,.08) 40%,transparent 64%)}
+.rigBlink{position:absolute;z-index:3;left:24%;right:24%;top:19%;height:2%;opacity:0;background:rgba(0,0,0,.32);transform:scaleY(.05);animation:rigBlink 5.8s linear infinite;pointer-events:none}
+.rigSpeechPulse{position:absolute;z-index:0;left:18%;right:18%;bottom:11%;height:34%;border-radius:50%;opacity:0;box-shadow:0 0 48px rgba(255,255,255,.18);transform:scale(.82)}
+.bodyAvatar[data-talking="true"] .rigImage{animation:rigTalk .44s ease-in-out infinite alternate}
+.bodyAvatar[data-talking="true"] .rigSpeechPulse{opacity:1;animation:speechPulse .7s ease-in-out infinite alternate}
+.bodyAvatar[data-mood="excited"] .liveRig,.bodyAvatar[data-mood="amused"] .liveRig{animation-duration:2.8s}
+.bodyAvatar[data-mood="focused"] .rigImage{transform:translateY(2px) rotate(-.4deg)}
+@keyframes rigBreath{0%,100%{transform:scaleY(1) translateY(0)}50%{transform:scaleY(1.012) translateY(-3px)}}
+@keyframes rigFloat{0%,100%{transform:translate3d(0,0,0) rotate(-.35deg)}50%{transform:translate3d(0,-8px,0) rotate(.45deg)}}
+@keyframes rigTalk{from{transform:translate3d(-1px,-4px,0) rotate(-.5deg) scale(1.002)}to{transform:translate3d(1px,-9px,0) rotate(.5deg) scale(1.012)}}
+@keyframes rigAura{50%{opacity:.55;transform:scale(1.04)}}
+@keyframes rigBlink{0%,44%,46%,100%{opacity:0;transform:scaleY(.05)}45%{opacity:.48;transform:scaleY(1)}}
+@keyframes speechPulse{to{transform:scale(1.08);box-shadow:0 0 70px rgba(255,255,255,.24)}}
+@media(max-width:760px){.bodyStage{inset:58px 0 0}.bodyAvatar{width:min(180px,42vw);height:min(390px,58vh);opacity:.92}.rigBlink{display:none}}
+@media(prefers-reduced-motion:reduce){.liveRig,.rigImage,.rigAura,.rigBlink,.rigSpeechPulse{animation:none!important}}
