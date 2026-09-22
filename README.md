@@ -1,4 +1,30 @@
-# Redbound — Write · Train · Evolve
+# Redbound — RPG Author Studio
+
+Redbound is now a cross-device RPG-styled book creation workspace for the web and Android. The main route uses the cloud-capable writing engine with Myria as the persistent assistant, while the prior workout-oriented implementation remains in repository history.
+
+## Current author-studio experience
+
+- Build novels, manga, comics, memoirs, nonfiction, poetry, scripts, lore books, and other long-form projects.
+- Default sections cover Main Ideas, Brainstorming, Outlines, Chapter Planner, Scenes, Characters, Relationships, Worldbuilding, Locations, Lore, Power Systems, Plot Development, Timeline, Continuity, Themes, Research, Rough Draft, Final Draft, and Publishing Notes.
+- Custom sections can be added at any time. Selecting a section enters a focused workspace and provides a Back to Main Menu control.
+- Cherry blossoms fall across a moonlit RPG interface and land over a reflective pond/ripple scene.
+- Signed-in projects use Supabase for cross-device project data, Myria conversation history, structured goals/tasks, and collaboration. Guest mode stays local to one device.
+- Myria receives an explicit bounded Plan → Act → Review → Revise → Self-review workflow instruction before each response.
+- Opt-in continuous microphone listening uses the Web Speech API when supported. It automatically restarts after normal recognition endings and ignores speech-recognition events while Myria is talking to reduce feedback loops.
+- Myria's spoken replies continue to use the configured secure voice action through the Supabase Edge Function. Secrets are not committed to client code.
+- The same main route is exported into the Capacitor Android build, so the web UI and APK share the same application experience.
+
+## Android APK
+
+The **Build Redbound Android APK** workflow runs on main-branch changes to the app and produces the **Redbound-Android-APK** artifact containing `Redbound-debug.apk`. This debug APK is intended for sideload testing. A production Play Store release still requires a protected signing key and release-version management.
+
+## Voice and memory boundaries
+
+Always-listening mode is opt-in and depends on browser/WebView speech-recognition support plus microphone permission. On unsupported WebViews, text chat remains available. Cross-device memory requires a signed-in cloud account; guest data does not automatically transfer between devices.
+
+---
+
+
 
 The main route is a local-first RPG writing and workout app. The older Duo workspace remains at `/duo/`.
 
