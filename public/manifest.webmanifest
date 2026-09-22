@@ -1,12 +1,12 @@
 {
-  "name": "Redbound",
+  "name": "Redbound — RPG Author Studio",
   "short_name": "Redbound",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b090d",
   "theme_color": "#8f1731",
-  "description": "Write, train and evolve with shared RPG progression",
+  "description": "Cross-device RPG book creation with persistent AI memory and voice interaction.",
   "icons": [
     {
       "src": "./icons/redbound.svg",
