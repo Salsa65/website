@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Redbound — Write · Train · Evolve',
-  description: 'An RPG writing studio and workout journal with shared character progression.',
+  title: 'Redbound — RPG Author Studio',
+  description: 'A cross-device RPG book creation studio with persistent AI memory, voice interaction, and focused writing workspaces.',
   manifest: `${process.env.NEXT_PUBLIC_BASE_PATH||''}/manifest.webmanifest`,
   appleWebApp: { capable: true, title: 'Redbound' },
 };
