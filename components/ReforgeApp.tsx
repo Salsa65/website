@@ -337,7 +337,7 @@ export default function RedboundApp(){
       const blob=await res.blob();
       if(!blob.size)throw new Error('Voice service returned empty audio.');
       objectUrl=URL.createObjectURL(blob);
-      const audio=new Audio(objectUrl);audio.preload='auto';audio.playsInline=true;audioRef.current=audio;
+      const audio=new Audio(objectUrl);audio.preload='auto';audioRef.current=audio;
       await audio.play();
       await new Promise<void>((resolve,reject)=>{audio.onended=()=>resolve();audio.onerror=()=>reject(new Error('Audio playback failed.'));});
     }catch(err){
