@@ -9,6 +9,7 @@ on:
       - 'lib/**'
       - 'public/**'
       - 'components/RpgForge*'
+      - 'components/ReforgeApp.tsx'
       - 'components/RpgTools.tsx'
       - 'scripts/**'
       - 'next.config.ts'
