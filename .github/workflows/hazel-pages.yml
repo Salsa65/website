@@ -11,19 +11,17 @@ permissions:
   id-token: write
 
 concurrency:
-  group: hazel-pages
+  group: pages
   cancel-in-progress: true
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Disable Jekyll
         run: touch public/.nojekyll
+      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
