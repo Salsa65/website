@@ -1,4 +1,4 @@
-name: Deploy Reforge to GitHub Pages
+name: Deploy Redbound Studio to GitHub Pages
 
 on:
   push:
@@ -29,9 +29,9 @@ jobs:
           npm run typecheck
           npm run lint
           npm test
-      - name: Build static Reforge
+      - name: Build static Redbound Studio
         env:
-          NEXT_PUBLIC_BASE_PATH: /website
+          NEXT_PUBLIC_BASE_PATH: /redbound-studio
           NEXT_PUBLIC_SUPABASE_URL: https://ztfbcefdqqklpvijxyen.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_G0IZvz5e6cpgRupw4jGJ_g_FqXDzJms
         run: npm run build
