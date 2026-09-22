@@ -1,0 +1,27 @@
+name: Export Redbound Source
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/source-export.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package repository source
+        run: |
+          mkdir -p /tmp/redbound-source
+          rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' ./ /tmp/redbound-source/
+          cd /tmp
+          zip -qr redbound-source.zip redbound-source
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Redbound-Source-Export
+          path: /tmp/redbound-source.zip
+          if-no-files-found: error
