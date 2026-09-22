@@ -161,3 +161,18 @@ body{
 .bubble>span{display:block;white-space:pre-wrap}
 .bubble-speak{margin-top:7px;display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:inherit;border-radius:999px;padding:5px 8px;cursor:pointer;opacity:.82}
 .bubble-speak:hover{opacity:1;background:rgba(255,255,255,.09)}
+
+
+/* Myria live conversational voice */
+.live-voice-panel{display:grid;gap:10px;margin:0 0 12px;padding:12px;border:1px solid rgba(255,196,214,.14);border-radius:14px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.018))}
+.live-voice-panel.connected{border-color:rgba(128,201,177,.36);box-shadow:inset 0 0 0 1px rgba(128,201,177,.08),0 0 22px rgba(79,151,129,.08)}
+.voice-status-copy{display:flex;flex-direction:column;gap:3px}
+.voice-status-copy strong{font-size:.72rem;letter-spacing:.12em;color:#f7dde6}
+.live-voice-panel.connected .voice-status-copy strong{color:#bde4d5}
+.voice-status-copy span{font-size:.78rem;line-height:1.45;color:#c7bac1}
+.voice-status-copy small{font-size:.68rem;color:#8f838a}
+.live-voice-actions{display:flex;flex-wrap:wrap;gap:8px}
+.live-voice-actions button{min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px}
+.live-voice-actions .primary{flex:1 1 150px}
+.live-voice-actions .ghost{flex:0 1 auto}
+@media(max-width:640px){.live-voice-actions{display:grid;grid-template-columns:1fr 1fr}.live-voice-actions .primary{grid-column:1/-1}}
