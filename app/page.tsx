@@ -1,2 +1,5 @@
-import ReforgeApp from '@/components/ReforgeApp';
-export default function Home() { return <ReforgeApp />; }
+import { redirect } from 'next/navigation';
+
+export default function Home() {
+  redirect('/hazel.html');
+}
