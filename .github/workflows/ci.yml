@@ -1,8 +1,9 @@
-name: Reforge CI
+name: Sakura Studio CI
 on:
   push:
-    branches: [main]
+    branches: [main, sakura-writing-studio]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,6 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Type check

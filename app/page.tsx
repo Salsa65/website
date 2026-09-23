@@ -1,2 +1,2 @@
-import ReforgeApp from '@/components/ReforgeApp';
-export default function Page(){return <ReforgeApp/>}
+import SakuraStudio from "../components/SakuraStudio";
+export default function Home(){return <SakuraStudio/>;}

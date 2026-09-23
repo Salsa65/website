@@ -1,75 +1,25 @@
-name: Build Redbound Android APK
-
+name: Build Sakura Android APK
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'app/**'
-      - 'lib/**'
-      - 'public/**'
-      - 'components/RpgForge*'
-      - 'components/ReforgeApp.tsx'
-      - 'components/RpgTools.tsx'
-      - 'scripts/**'
-      - 'next.config.ts'
-      - 'components/DuoForgeApp.tsx'
-      - 'components/DuoForgeApp.module.css'
-      - 'capacitor.config.ts'
-      - 'scripts/build-mobile.mjs'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tsconfig.json'
-      - 'eslint.config.mjs'
-      - '.github/workflows/android-apk.yml'
-
 permissions:
   contents: read
-
 jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
+          cache: npm
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Build native web bundle
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://ztfbcefdqqklpvijxyen.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_G0IZvz5e6cpgRupw4jGJ_g_FqXDzJms
-        run: npm run build:mobile
-
-      - name: Create Android platform
-        run: npx cap add android
-
-      - name: Sync web bundle
-        run: npx cap sync android
-
-      - name: Install Redbound launcher icon
-        run: npm run android:assets
-
-      - name: Build debug APK
-        run: |
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:mobile
+      - run: npx cap add android
+      - run: npx cap sync android
+      - run: |
           chmod +x android/gradlew
-          cd android
-          ./gradlew assembleDebug --no-daemon
-
-      - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Redbound-debug.apk
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Redbound-Android-APK
-          path: Redbound-debug.apk
-          retention-days: 30
+          cd android && ./gradlew assembleDebug --no-daemon
