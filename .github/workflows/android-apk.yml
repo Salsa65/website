@@ -1,8 +1,6 @@
 name: Build Sakura Android APK
 on:
   workflow_dispatch:
-  push:
-    branches: [sakura-writing-studio]
 permissions:
   contents: read
 jobs:
@@ -18,26 +16,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Build native web bundle
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://ztfbcefdqqklpvijxyen.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_G0IZvz5e6cpgRupw4jGJ_g_FqXDzJms
-        run: npm run build:mobile
-      - name: Create Android platform
-        run: npx cap add android
-      - name: Sync web bundle
-        run: npx cap sync android
-      - name: Build debug APK
-        run: |
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:mobile
+      - run: npx cap add android
+      - run: npx cap sync android
+      - run: |
           chmod +x android/gradlew
-          cd android
-          ./gradlew assembleDebug --no-daemon
-      - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Sakura-Writing-Studio-debug.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Sakura-Writing-Studio-Android-APK
-          path: Sakura-Writing-Studio-debug.apk
-          retention-days: 30
+          cd android && ./gradlew assembleDebug --no-daemon
