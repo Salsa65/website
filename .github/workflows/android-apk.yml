@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [aetherfall-rebuild]
-    paths: ['public/**','capacitor.config.ts','scripts/build-mobile.mjs','package.json','package-lock.json','.github/workflows/android-apk.yml']
+    paths: ['app/**','components/**','lib/**','public/**','capacitor.config.ts','scripts/build-mobile.mjs','package.json','package-lock.json','.github/workflows/android-apk.yml']
 permissions:
   contents: read
 jobs:
