@@ -47,6 +47,15 @@ jobs:
             convert public/aetherfall-icon.jpg -resize "${size}x${size}^" -gravity center -extent "${size}x${size}" "$dir/ic_launcher.png"
             cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
           done
+      - name: Harden Android WebView and app identity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/src/main/AndroidManifest.xml')
+          t=p.read_text()
+          t=t.replace('<application', '<application android:usesCleartextTraffic="false"', 1) if 'usesCleartextTraffic=' not in t else t
+          p.write_text(t)
+          PY
       - name: Build APK
         run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon
       - name: Package APK
